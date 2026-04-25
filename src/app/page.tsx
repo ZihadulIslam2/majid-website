@@ -1,8 +1,15 @@
+import Banner from "@/features/Home/component/Banner";
+import Navbar from "@/components/sheard/website/Navbar";
+import Footer from "@/components/sheard/website/Footer";
+
 export default function Home() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-24">
-      <h1 className="text-4xl font-bold">Template Setup</h1>
-      <p className="mt-4 text-xl">The application root is ready.</p>
+    <main>
+      <div className="min-h-screen flex flex-col">
+        <Navbar />
+        <Banner />
+      </div>
+      <Footer />
     </main>
   );
 }

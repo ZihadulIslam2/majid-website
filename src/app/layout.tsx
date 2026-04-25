@@ -12,9 +12,8 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: "sktch Labs",
-  description:
-    "Design amazing digital experiences that create more happy in the world.",
+  title: "IMOSCAN",
+  description: "Verify Global IMEI Intelligence in Real-Time",
 };
 
 export default function RootLayout({
