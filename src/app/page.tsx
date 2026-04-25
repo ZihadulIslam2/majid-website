@@ -13,7 +13,7 @@ import StartChecking from "@/features/Home/component/StartChecking";
 export default function Home() {
   return (
     <main>
-      <div className="min-h-screen flex flex-col">
+      <div className="min-h-screen flex flex-col pt-20 sm:pt-24">
         <Navbar />
         <Banner />
       </div>
