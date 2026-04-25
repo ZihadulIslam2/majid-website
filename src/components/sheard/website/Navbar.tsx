@@ -19,7 +19,7 @@ export default function Navbar() {
       <div className="flex gap-2 md:gap-4 items-center">
         {/* Login button */}
         <Link href="/auth/login">
-          <div className="border border-[#84CC16] px-4 py-2 rounded-full cursor-pointer hover:bg-[#84CC16] hover:text-white transition text-sm md:text-base">
+          <div className="border border-[#84CC16] text-[#84CC16] px-4 py-2 rounded-full cursor-pointer hover:bg-[#84CC16] hover:text-white transition text-sm md:text-base">
             Login
           </div>
         </Link>

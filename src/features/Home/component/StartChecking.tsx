@@ -49,7 +49,7 @@ export default function StartChecking() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ delay: 0.1 }}
-          className="text-[#64748B] text-sm md:text-lg mb-12 max-w-2xl mx-auto font-medium"
+          className="text-[#64748B] text-sm md:text-lg mb-8 max-w-2xl mx-auto font-medium"
         >
           Get instant IMEI reports, AI-powered insights, and avoid risky
           purchases
@@ -61,7 +61,7 @@ export default function StartChecking() {
           viewport={{ once: true }}
           transition={{ delay: 0.2 }}
         >
-          <button className="bg-[#84CC16] hover:bg-[#6fa512] text-white px-6 py-4 rounded-2xl font-bold text-lg shadow-xl shadow-lime-500/20 transition-all transform hover:scale-105 active:scale-95 mb-8 cursor-pointer">
+          <button className="bg-[#84CC16] text-white px-6 py-4 rounded-2xl font-bold text-lg shadow-xl shadow-lime-500/20 mb-8 cursor-pointer">
             Check Now
           </button>
           <p className="text-[#94A3B8] font-bold text-sm tracking-wide uppercase">

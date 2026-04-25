@@ -44,7 +44,7 @@ const reviews = [
 
 export default function Review() {
   return (
-    <section className="py-24 bg-[#F8FAFC]">
+    <section className="py-24 bg-[#FFFFFF]">
       <div className="mx-auto container px-6">
         {/* Heading */}
         <div className="text-center mb-16">

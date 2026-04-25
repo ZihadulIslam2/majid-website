@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import Link from "next/link";
 
@@ -9,29 +9,41 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center p-6">
+    <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4 sm:p-6 font-poppins relative">
+      {/* Back Button */}
+      <Link
+        href="/"
+        className="absolute top-6 left-6 sm:top-10 sm:left-10 flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-sm border border-gray-100 text-[#64748B] hover:text-[#0F172A] hover:bg-gray-50 transition-all group font-bold text-sm"
+      >
+        <ArrowLeft
+          size={18}
+          className="group-hover:-translate-x-1 transition-transform"
+        />
+        Back to Home
+      </Link>
+
       <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="w-full max-w-md bg-white rounded-[40px] p-10 md:p-14 shadow-[0_40px_80px_-15px_rgba(0,0,0,0.08)] border border-gray-100"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full max-w-[580px] bg-white rounded-[24px] sm:rounded-[40px] p-6 sm:p-10 md:p-14 shadow-[0_40px_80px_-15px_rgba(0,0,0,0.05)] border border-gray-100"
       >
         {/* Header */}
-        <div className="mb-10">
-          <h1 className="text-3xl font-black text-[#0F172A] mb-3">
+        <div className="mb-4 sm:mb-6 text-left">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-[#0F172A] mb-2 sm:mb-4 tracking-tight">
             Welcome Back
           </h1>
-          <p className="text-[#64748B] text-sm font-medium">
-            Enter your credentials to manage your account.
+          <p className="text-[#64748B] text-sm sm:text-[15px] font-medium leading-relaxed">
+            Enter your credentials to manage your attractions.
           </p>
         </div>
 
         {/* Form */}
-        <form className="space-y-6">
+        <form className="space-y-4 sm:space-y-6">
           <div>
             <input
               type="email"
               placeholder="hello@example.com"
-              className="w-full px-6 py-4 rounded-full border border-gray-200 focus:border-[#84CC16] focus:ring-4 focus:ring-[#84CC16]/10 outline-none transition-all text-[#1E293B] placeholder:text-gray-400 font-medium"
+              className="w-full px-6 py-4 sm:px-8 sm:py-5 rounded-full border border-gray-200 focus:border-[#84CC16] focus:ring-4 focus:ring-[#84CC16]/5 outline-none transition-all text-[#1E293B] placeholder:text-gray-400 font-semibold text-sm sm:text-base"
             />
           </div>
 
@@ -39,46 +51,64 @@ export default function Login() {
             <input
               type={showPassword ? "text" : "password"}
               placeholder="Enter password"
-              className="w-full px-6 py-4 rounded-full border border-gray-200 focus:border-[#84CC16] focus:ring-4 focus:ring-[#84CC16]/10 outline-none transition-all text-[#1E293B] placeholder:text-gray-400 font-medium"
+              className="w-full px-6 py-4 sm:px-8 sm:py-5 rounded-full border border-gray-200 focus:border-[#84CC16] focus:ring-4 focus:ring-[#84CC16]/5 outline-none transition-all text-[#1E293B] placeholder:text-gray-400 font-semibold text-sm sm:text-base"
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-6 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#84CC16] transition"
+              className="absolute right-6 sm:right-8 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#0F172A] transition"
             >
-              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              {showPassword ? (
+                <EyeOff size={20} className="sm:w-[22px] sm:h-[22px]" />
+              ) : (
+                <Eye size={20} className="sm:w-[22px] sm:h-[22px]" />
+              )}
             </button>
           </div>
 
-          <div className="flex items-center justify-between px-2">
-            <label className="flex items-center gap-2 cursor-pointer group">
-              <input
-                type="checkbox"
-                className="w-5 h-5 rounded border-gray-300 text-[#84CC16] focus:ring-[#84CC16] transition cursor-pointer"
-              />
-              <span className="text-sm font-bold text-[#64748B] group-hover:text-[#0F172A] transition">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-2 pt-2">
+            <label className="flex items-center gap-3 cursor-pointer group">
+              <div className="relative flex items-center">
+                <input
+                  type="checkbox"
+                  className="peer h-5 w-5 cursor-pointer appearance-none rounded border border-gray-300 checked:bg-[#84CC16] checked:border-[#84CC16] transition-all"
+                />
+                <svg
+                  className="absolute h-3.5 w-3.5 text-white opacity-0 peer-checked:opacity-100 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none cursor-pointer"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+              </div>
+              <span className="text-xs sm:text-sm font-bold text-[#64748B] group-hover:text-[#0F172A] transition">
                 Remember me
               </span>
             </label>
             <Link
               href="/auth/forgot-password"
-              className="text-sm font-black text-[#1E293B] hover:text-[#84CC16] transition underline underline-offset-4"
+              className="text-xs sm:text-sm font-black text-[#0F172A] hover:text-[#84CC16] transition underline underline-offset-4 decoration-2"
             >
               Forgot password?
             </Link>
           </div>
 
-          <button className="w-full bg-[#84CC16] hover:bg-[#6fa512] text-white font-black py-4 rounded-full shadow-lg shadow-lime-500/20 transition-all transform hover:scale-[1.02] active:scale-95 text-lg">
+          <button className="w-full bg-[#84CC16] text-white font-black py-3 sm:py-3 rounded-full shadow-sm shadow-lime-500/20  text-base sm:text-lg mt-2 cursor-pointer">
             Log in
           </button>
         </form>
 
         {/* Footer */}
-        <p className="text-center mt-10 text-sm font-bold text-[#64748B]">
+        <p className="text-center mt-4 sm:mt-6 text-sm sm:text-[15px] font-bold text-[#64748B]">
           Don&apos;t have an account?{" "}
           <Link
             href="/auth/sign-up"
-            className="text-[#0F172A] hover:text-[#84CC16] transition border-b-2 border-transparent hover:border-[#84CC16]"
+            className="text-[#0F172A] hover:text-[#84CC16] transition border-b-2 border-transparent hover:border-[#84CC16] ml-1"
           >
             Sign up
           </Link>
