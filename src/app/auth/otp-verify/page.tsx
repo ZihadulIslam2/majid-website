@@ -1,5 +1,6 @@
+import OtpVerify from "@/features/auth/component/OtpVerify";
 import React from "react";
 
 export default function page() {
-  return <div>page</div>;
+  return <OtpVerify />;
 }

@@ -40,7 +40,7 @@ declare module "next-auth/jwt" {
   }
 }
 
-import { refreshAccessToken } from "@/features/auth/api/refresh-token.api";
+import { refreshAccessTokenApi } from "@/features/auth/api/auth.api";
 
 const handler = NextAuth({
   providers: [
@@ -133,9 +133,9 @@ const handler = NextAuth({
 
       // Access token has expired, try to update it
       try {
-        const refreshedTokens = await refreshAccessToken(token.refreshToken);
+        const refreshedTokens = await refreshAccessTokenApi(token.refreshToken);
 
-        if (!refreshedTokens.status) {
+        if (!refreshedTokens.success || !refreshedTokens.data) {
           throw refreshedTokens;
         }
 
@@ -143,7 +143,7 @@ const handler = NextAuth({
           ...token,
           accessToken: refreshedTokens.data.accessToken,
           accessTokenExpires: Date.now() + 60 * 60 * 1000, // Update expiration
-          refreshToken: refreshedTokens.data.refreshToken || token.refreshToken, // Fallback to old refresh token
+          refreshToken: token.refreshToken, // The API only returns accessToken
         };
       } catch (error) {
         console.error("Error refreshing access token", error);

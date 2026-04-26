@@ -4,42 +4,54 @@ import { motion } from "framer-motion";
 import { Eye, EyeOff, ArrowLeft, Loader2 } from "lucide-react";
 import { useState } from "react";
 import Link from "next/link";
-import { signIn } from "next-auth/react";
+import { useSignUp } from "../hooks/useSignUp";
 import { useRouter } from "next/navigation";
 
-export default function Login() {
+export default function SignUp() {
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const router = useRouter();
+  const { signUp, loading, error } = useSignUp();
 
   const [formData, setFormData] = useState({
+    name: "",
     email: "",
+    whatsapp: "",
     password: "",
-    rememberMe: false,
+    confirmPassword: "",
+    agreeToTerms: false,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError(null);
+    if (formData.password !== formData.confirmPassword) {
+      alert("Passwords do not match");
+      return;
+    }
+
+    // Splitting name into firstName and lastName for the API
+    const nameParts = formData.name.trim().split(" ");
+    const firstName = nameParts[0];
+    const lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : "";
+
+    const payload = {
+      firstName,
+      lastName,
+      email: formData.email,
+      password: formData.password,
+    };
 
     try {
-      const result = await signIn("credentials", {
-        redirect: false,
-        email: formData.email,
-        password: formData.password,
-      });
-
-      if (result?.error) {
-        setError(result.error);
-      } else {
-        router.push("/"); // Redirect to home on success
+      const response = await signUp(payload);
+      if (response.success) {
+        // Store token temporarily for verification step if needed
+        if (response.data?.accessToken) {
+          localStorage.setItem("temp_auth_token", response.data.accessToken);
+        }
+        router.push("/auth/otp-verify");
       }
     } catch (err) {
-      setError("Something went wrong. Please try again.");
-    } finally {
-      setLoading(false);
+      console.error(err);
     }
   };
 
@@ -65,20 +77,33 @@ export default function Login() {
         {/* Header */}
         <div className="mb-4 sm:mb-6 text-left">
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-[#0F172A] mb-2 sm:mb-4 tracking-tight">
-            Welcome Back
+            Create your Account
           </h1>
           <p className="text-[#64748B] text-sm sm:text-[15px] font-medium leading-relaxed">
-            Enter your credentials to manage your attractions.
+            Join the premium ticketing experience.
           </p>
         </div>
 
         {/* Form */}
         <form className="space-y-4 sm:space-y-6" onSubmit={handleSubmit}>
           {error && (
-            <div className="p-4 bg-red-50 border border-red-100 text-red-600 rounded-2xl text-sm font-semibold text-center">
+            <div className="p-4 bg-red-50 border border-red-100 text-red-600 rounded-2xl text-sm font-semibold">
               {error}
             </div>
           )}
+
+          <div>
+            <input
+              type="text"
+              required
+              placeholder="Enter your name"
+              value={formData.name}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
+              className="w-full px-6 py-4 sm:px-8 sm:py-5 rounded-full border border-gray-200 focus:border-[#84CC16] focus:ring-4 focus:ring-[#84CC16]/5 outline-none transition-all text-[#1E293B] placeholder:text-gray-400 font-semibold text-sm sm:text-base"
+            />
+          </div>
 
           <div>
             <input
@@ -93,11 +118,23 @@ export default function Login() {
             />
           </div>
 
+          <div>
+            <input
+              type="text"
+              placeholder="What's App Number"
+              value={formData.whatsapp}
+              onChange={(e) =>
+                setFormData({ ...formData, whatsapp: e.target.value })
+              }
+              className="w-full px-6 py-4 sm:px-8 sm:py-5 rounded-full border border-gray-200 focus:border-[#84CC16] focus:ring-4 focus:ring-[#84CC16]/5 outline-none transition-all text-[#1E293B] placeholder:text-gray-400 font-semibold text-sm sm:text-base"
+            />
+          </div>
+
           <div className="relative">
             <input
               type={showPassword ? "text" : "password"}
               required
-              placeholder="Enter password"
+              placeholder="Create a password"
               value={formData.password}
               onChange={(e) =>
                 setFormData({ ...formData, password: e.target.value })
@@ -117,14 +154,39 @@ export default function Login() {
             </button>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-2 pt-2">
+          <div className="relative">
+            <input
+              type={showConfirmPassword ? "text" : "password"}
+              required
+              placeholder="Confirm password"
+              value={formData.confirmPassword}
+              onChange={(e) =>
+                setFormData({ ...formData, confirmPassword: e.target.value })
+              }
+              className="w-full px-6 py-4 sm:px-8 sm:py-5 rounded-full border border-gray-200 focus:border-[#84CC16] focus:ring-4 focus:ring-[#84CC16]/5 outline-none transition-all text-[#1E293B] placeholder:text-gray-400 font-semibold text-sm sm:text-base"
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              className="absolute right-6 sm:right-8 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#0F172A] transition"
+            >
+              {showConfirmPassword ? (
+                <EyeOff size={20} className="sm:w-[22px] sm:h-[22px]" />
+              ) : (
+                <Eye size={20} className="sm:w-[22px] sm:h-[22px]" />
+              )}
+            </button>
+          </div>
+
+          <div className="flex items-start gap-3 px-2 pt-2">
             <label className="flex items-center gap-3 cursor-pointer group">
               <div className="relative flex items-center">
                 <input
                   type="checkbox"
-                  checked={formData.rememberMe}
+                  required
+                  checked={formData.agreeToTerms}
                   onChange={(e) =>
-                    setFormData({ ...formData, rememberMe: e.target.checked })
+                    setFormData({ ...formData, agreeToTerms: e.target.checked })
                   }
                   className="peer h-5 w-5 cursor-pointer appearance-none rounded border border-gray-300 checked:bg-[#84CC16] checked:border-[#84CC16] transition-all"
                 />
@@ -142,15 +204,9 @@ export default function Login() {
                 </svg>
               </div>
               <span className="text-xs sm:text-sm font-bold text-[#64748B] group-hover:text-[#0F172A] transition">
-                Remember me
+                I agree to the Terms of services and Privacy Policy
               </span>
             </label>
-            <Link
-              href="/auth/forgot-password"
-              className="text-xs sm:text-sm font-black text-[#0F172A] hover:text-[#84CC16] transition underline underline-offset-4 decoration-2"
-            >
-              Forgot password?
-            </Link>
           </div>
 
           <button
@@ -159,18 +215,18 @@ export default function Login() {
             className="w-full bg-[#84CC16] text-white font-black py-3 sm:py-3 rounded-full shadow-sm shadow-lime-500/20 text-base sm:text-lg mt-2 cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {loading && <Loader2 className="animate-spin" size={20} />}
-            {loading ? "Logging in..." : "Log in"}
+            {loading ? "Creating Account..." : "Get started"}
           </button>
         </form>
 
         {/* Footer */}
         <p className="text-center mt-4 sm:mt-6 text-sm sm:text-[15px] font-bold text-[#64748B]">
-          Don&apos;t have an account?{" "}
+          Already a Member?{" "}
           <Link
-            href="/auth/sign-up"
+            href="/auth/login"
             className="text-[#0F172A] hover:text-[#84CC16] transition border-b-2 border-transparent hover:border-[#84CC16] ml-1"
           >
-            Sign up
+            Log in
           </Link>
         </p>
       </motion.div>
