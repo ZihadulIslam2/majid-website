@@ -7,6 +7,7 @@ const nextConfig: NextConfig = {
       "res.cloudinary.com",
       "api.dicebear.com",
       "i.pravatar.cc",
+      "images.unsplash.com",
     ],
   },
 };
