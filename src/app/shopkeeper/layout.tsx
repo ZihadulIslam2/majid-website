@@ -1,5 +1,5 @@
-import Header from "@/components/sheard/shpokeeper/Header";
-import Sidebar from "@/components/sheard/shpokeeper/Sidebar";
+import Header from "@/components/sheard/shopkeeper/Header";
+import Sidebar from "@/components/sheard/shopkeeper/Sidebar";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {

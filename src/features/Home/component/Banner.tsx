@@ -65,7 +65,7 @@ export default function Banner() {
     if (status === "authenticated") {
       const serviceId = selectedService?.service || "6";
       router.push(
-        `/shpokeeper/scan-device?imei=${encodeURIComponent(imei)}&serviceId=${serviceId}`,
+        `/shopkeeper/scan-device?imei=${encodeURIComponent(imei)}&serviceId=${serviceId}`,
       );
     } else {
       setShowLoginModal(true);

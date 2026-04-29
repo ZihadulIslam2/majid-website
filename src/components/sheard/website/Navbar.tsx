@@ -10,12 +10,12 @@ export default function Navbar() {
 
   const getDashboardUrl = () => {
     if (
-      session?.user?.role === "shpokeeper" ||
+      session?.user?.role === "shopkeeper" ||
       session?.user?.role === "shopkeeper"
     ) {
-      return "/shpokeeper/dashboard";
+      return "/shopkeeper/dashboard";
     }
-    return "/shpokeeper/dashboard"; // Default to shpokeeper dashboard for now as per project structure
+    return "/shopkeeper/dashboard"; // Default to shopkeeper dashboard for now as per project structure
   };
 
   const getInitials = (name?: string) => {
@@ -60,7 +60,7 @@ export default function Navbar() {
             <Link
               href={
                 status === "authenticated"
-                  ? "/shpokeeper/scan-device"
+                  ? "/shopkeeper/scan-device"
                   : "/auth/sign-up"
               }
             >

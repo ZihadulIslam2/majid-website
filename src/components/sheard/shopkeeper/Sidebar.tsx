@@ -29,37 +29,37 @@ const navItems = [
   {
     icon: <Scan size={20} />,
     label: "Scan Device",
-    href: "/shpokeeper/scan-device",
+    href: "/shopkeeper/scan-device",
     isSpecial: true,
   },
   {
     icon: <LayoutDashboard size={20} />,
     label: "Dashboard Overview",
-    href: "/shpokeeper/dashboard",
+    href: "/shopkeeper/dashboard",
   },
   {
     icon: <CreditCard size={20} />,
     label: "Payment",
-    href: "/shpokeeper/payment",
+    href: "/shopkeeper/payment",
     submenu: [
-      { label: "Payment History", href: "/shpokeeper/payment/history" },
-      { label: "Add funds", href: "/shpokeeper/payment/add-funds" },
+      { label: "Payment History", href: "/shopkeeper/payment/history" },
+      { label: "Add funds", href: "/shopkeeper/payment/add-funds" },
     ],
   },
   // {
   //   icon: <Tag size={20} />,
   //   label: "Pricing Plan",
-  //   href: "/shpokeeper/pricing",
+  //   href: "/shopkeeper/pricing",
   // },
   {
     icon: <Package size={20} />,
     label: "Inventory",
-    href: "/shpokeeper/inventory",
+    href: "/shopkeeper/inventory",
   },
   {
     icon: <Settings size={20} />,
     label: "Settings",
-    href: "/shpokeeper/settings",
+    href: "/shopkeeper/settings",
   },
 ];
 
