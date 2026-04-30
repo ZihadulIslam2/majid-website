@@ -1,4 +1,5 @@
 "use client";
+
 import NotificationDropdown from "@/features/notifications/component/NotificationDropdown";
 import { ModeToggle } from "../website/ModeToggle";
 
@@ -9,7 +10,7 @@ export default function Header() {
       <div className="flex-1 max-w-xl"></div>
 
       {/* Right: Actions */}
-      <div className="flex items-center gap-6">
+      <div className="flex items-center gap-4">
         {/* Theme Toggle */}
         <ModeToggle />
 

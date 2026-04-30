@@ -344,7 +344,7 @@ export default function Sidebar() {
                 </div>
 
                 <div className="space-y-3">
-                  <h3 className="text-2xl font-black text-[#0F172A] tracking-tight">
+                  <h3 className="text-2xl font-black text-foreground tracking-tight">
                     Confirm Logout
                   </h3>
                   <p className="text-sm font-medium text-muted-foreground leading-relaxed">

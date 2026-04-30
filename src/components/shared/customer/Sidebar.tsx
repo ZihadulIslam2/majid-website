@@ -48,6 +48,16 @@ const navItems = [
   },
   {
     icon: <Settings size={20} />,
+    label: "Repair Requests",
+    href: "/customer/repair-request",
+  },
+  //  {
+  // icon: <Settings size={20} />,
+  // label: "Settings",
+  // href: "/customer/settings",
+  // },
+  {
+    icon: <Settings size={20} />,
     label: "Settings",
     href: "/customer/settings",
   },
@@ -166,7 +176,7 @@ export default function Sidebar() {
                     className={`w-full flex items-center justify-between px-5 py-4 rounded-2xl transition-all group relative overflow-hidden ${
                       isActive
                         ? "bg-[#84CC16] text-white shadow-lg shadow-lime-500/20"
-                        : "text-[#475569] hover:bg-gray-50 hover:text-[#0F172A]"
+                        : "text-muted-foreground hover:bg-surface hover:text-foreground"
                     }`}
                   >
                     <div className="flex items-center gap-4 relative z-10">
