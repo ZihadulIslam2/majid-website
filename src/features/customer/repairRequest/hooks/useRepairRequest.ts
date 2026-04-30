@@ -4,6 +4,8 @@ import {
   createRepairRequest,
   getMyRepairRequests,
   getShopkeepers,
+  getRepairRequestDetails,
+  updateRepairQuoteStatus,
 } from "../api/repair-request.api";
 
 export function useShopkeepers(search: string, minRating?: number) {
@@ -40,5 +42,33 @@ export function useMyRepairRequests(page = 1, limit = 10) {
   return useQuery({
     queryKey: ["repair-requests", page, limit],
     queryFn: () => getMyRepairRequests({ page, limit }),
+  });
+}
+
+export function useRepairRequestDetails(id: string) {
+  return useQuery({
+    queryKey: ["repair-request", id],
+    queryFn: () => getRepairRequestDetails(id),
+    enabled: !!id,
+  });
+}
+
+export function useUpdateRepairQuoteStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: updateRepairQuoteStatus,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({
+        queryKey: ["repair-request", data.data._id],
+      });
+      queryClient.invalidateQueries({ queryKey: ["repair-requests"] });
+      toast.success("Quote status updated successfully");
+    },
+    onError: (error: { response?: { data?: { message?: string } } }) => {
+      toast.error(
+        error.response?.data?.message || "Failed to update quote status",
+      );
+    },
   });
 }

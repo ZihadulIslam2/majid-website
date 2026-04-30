@@ -7,9 +7,9 @@ import {
   LogOut,
   Scan,
   CreditCard,
-  Package,
   Mail,
   ChevronDown,
+  History,
   HelpCircle,
   Phone,
 } from "lucide-react";
@@ -50,6 +50,11 @@ const navItems = [
     icon: <Settings size={20} />,
     label: "Repair Requests",
     href: "/customer/repair-request",
+  },
+  {
+    icon: <History size={20} />,
+    label: "Repair History",
+    href: "/customer/repair-history",
   },
   //  {
   // icon: <Settings size={20} />,

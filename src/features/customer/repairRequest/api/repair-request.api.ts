@@ -47,3 +47,23 @@ export const getMyRepairRequests = async (params?: {
   const response = await api.get("/repair-requests/my-history", { params });
   return response.data;
 };
+
+export const getRepairRequestDetails = async (
+  id: string,
+): Promise<ApiResponse<RepairRequest>> => {
+  const response = await api.get(`/repair-requests/${id}`);
+  return response.data;
+};
+
+export const updateRepairQuoteStatus = async ({
+  id,
+  status,
+}: {
+  id: string;
+  status: "quote_accepted" | "quote_rejected";
+}): Promise<ApiResponse<RepairRequest>> => {
+  const response = await api.put(`/repair-requests/quote-status/${id}`, {
+    status,
+  });
+  return response.data;
+};

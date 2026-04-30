@@ -1,26 +1,21 @@
 "use client";
 
 import Image from "next/image";
-import type React from "react";
-import { FormEvent, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Battery,
   Clock3,
-  Loader2,
   MapPin,
-  Paperclip,
   Search,
   SlidersHorizontal,
   Smartphone,
   Star,
   Wrench,
 } from "lucide-react";
-import { useMyProfile } from "@/features/shopkeeper/settings/hooks/useSettings";
-import {
-  useCreateRepairRequest,
-  useShopkeepers,
-} from "../hooks/useRepairRequest";
+import { useShopkeepers } from "../hooks/useRepairRequest";
 import { Shopkeeper } from "../types/repair-request.types";
+import { RepairRequestFormModal } from "./RepairRequestFormModal";
+import { Button } from "@/components/ui/button";
 
 const services = [
   { label: "Repair", icon: Wrench },
@@ -31,113 +26,74 @@ const services = [
 export default function RepairRequest() {
   const [search, setSearch] = useState("");
   const [ratingFilter, setRatingFilter] = useState<number | undefined>();
-  const [selectedShopkeeperId, setSelectedShopkeeperId] = useState("");
-  const [fullName, setFullName] = useState("");
-  const [isFullNameEdited, setIsFullNameEdited] = useState(false);
-  const [email, setEmail] = useState("");
-  const [isEmailEdited, setIsEmailEdited] = useState(false);
-  const [deviceModel, setDeviceModel] = useState("");
-  const [imeiNumber, setImeiNumber] = useState("");
-  const [problemDescription, setProblemDescription] = useState("");
-  const [problemFile, setProblemFile] = useState<File | null>(null);
+  const [selectedShopkeeper, setSelectedShopkeeper] =
+    useState<Shopkeeper | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const { data: profileData } = useMyProfile();
   const { data: shopkeeperData, isLoading } = useShopkeepers(
     search,
     ratingFilter,
   );
-  const createRepairRequest = useCreateRepairRequest();
 
-  const user = profileData?.data;
   const shopkeepers = useMemo(
     () => shopkeeperData?.data || [],
     [shopkeeperData],
   );
-  const profileFullName = [user?.firstName, user?.lastName]
-    .filter(Boolean)
-    .join(" ")
-    .trim();
-  const resolvedFullName = isFullNameEdited ? fullName : profileFullName;
-  const resolvedEmail = isEmailEdited ? email : user?.email || "";
 
-  const selectedShopkeeper =
-    shopkeepers.find((shopkeeper) => shopkeeper._id === selectedShopkeeperId) ||
-    shopkeepers[0];
-
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    if (!selectedShopkeeper) return;
-
-    createRepairRequest.mutate(
-      {
-        shopkeeperId: selectedShopkeeper._id,
-        firstName: resolvedFullName,
-        email: resolvedEmail,
-        deviceModel,
-        IMEINumber: imeiNumber,
-        description: problemDescription,
-        images: problemFile ? [problemFile] : undefined,
-      },
-      {
-        onSuccess: () => {
-          setDeviceModel("");
-          setImeiNumber("");
-          setProblemDescription("");
-          setProblemFile(null);
-        },
-      },
-    );
+  const handleSelectShopkeeper = (shopkeeper: Shopkeeper) => {
+    setSelectedShopkeeper(shopkeeper);
+    setIsModalOpen(true);
   };
 
   return (
-    <div className="px-4 py-6 md:px-8 lg:px-12 font-poppins">
-      <form
-        onSubmit={handleSubmit}
-        className="mx-auto max-w-[1180px] rounded-2xl border border-gray-200 bg-white p-5 shadow-sm md:p-6"
-      >
-        <div className="mb-8">
-          <h1 className="text-2xl font-semibold tracking-tight text-[#111827]">
-            Create Order
-          </h1>
-          <p className="mt-1 text-base font-medium text-[#9CA3AF]">
-            Give your problem to get service
-          </p>
+    <div className="px-4 py-8 md:px-8 lg:px-12 font-poppins min-h-screen bg-background">
+      <div className="mx-auto max-w-[1200px] space-y-8">
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div>
+            <h1 className="text-3xl font-black text-foreground tracking-tight">
+              Find a Repair Shop
+            </h1>
+            <p className="mt-2 text-muted-foreground font-medium text-lg">
+              Choose the best expert for your device&apos;s recovery
+            </p>
+          </div>
         </div>
 
-        <div className="mb-7 flex flex-col gap-3 lg:flex-row">
-          <label className="relative flex-1">
+        {/* Filters Section */}
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="relative flex-1 group">
             <Search
               size={20}
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-[#9CA3AF]"
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors"
             />
             <input
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              className="h-12 w-full rounded-xl border border-gray-200 bg-white pl-12 pr-4 text-sm font-medium text-[#111827] outline-none transition focus:border-[#84CC16] focus:ring-4 focus:ring-[#84CC16]/10"
-              placeholder="Search by shop name or location"
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-14 w-full rounded-2xl border border-border bg-card pl-12 pr-4 text-foreground font-medium outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10 shadow-sm"
+              placeholder="Search by shop name or location..."
               type="search"
             />
-          </label>
+          </div>
 
-          <button
-            type="button"
-            onClick={() =>
-              setRatingFilter((current) => (current ? undefined : 4))
-            }
-            className={`flex h-12 items-center justify-center gap-2 rounded-xl border px-5 text-sm font-semibold transition ${
-              ratingFilter
-                ? "border-[#84CC16] bg-[#F7FEE7] text-[#65A30D]"
-                : "border-gray-200 bg-white text-[#9CA3AF] hover:border-[#84CC16]"
+          <Button
+            variant={ratingFilter ? "default" : "outline"}
+            onClick={() => setRatingFilter((curr) => (curr ? undefined : 4))}
+            className={`h-14 rounded-2xl px-6 font-bold gap-3 border-border transition-all ${
+              !ratingFilter && "hover:border-primary hover:text-primary bg-card"
             }`}
           >
-            <Star size={19} className="text-[#84CC16]" />
-            Rating
-            <SlidersHorizontal size={16} />
-          </button>
+            <Star
+              size={20}
+              className={ratingFilter ? "fill-white" : "text-primary"}
+            />
+            4.0+ Rating
+            <SlidersHorizontal size={18} />
+          </Button>
         </div>
 
-        <div className="mb-8 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+        {/* Shopkeepers Grid */}
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {isLoading ? (
             <ShopCardSkeleton />
           ) : shopkeepers.length > 0 ? (
@@ -145,204 +101,111 @@ export default function RepairRequest() {
               <ShopkeeperCard
                 key={shopkeeper._id}
                 shopkeeper={shopkeeper}
-                selected={selectedShopkeeper?._id === shopkeeper._id}
-                onSelect={() => setSelectedShopkeeperId(shopkeeper._id)}
+                onSelect={() => handleSelectShopkeeper(shopkeeper)}
               />
             ))
           ) : (
-            <div className="col-span-full rounded-xl border border-dashed border-gray-200 p-10 text-center">
-              <p className="text-sm font-semibold text-[#64748B]">
-                No repair shops found. Try a different search.
+            <div className="col-span-full rounded-3xl border-2 border-dashed border-border p-16 text-center bg-card/50">
+              <div className="mx-auto w-16 h-16 bg-muted rounded-2xl flex items-center justify-center mb-4">
+                <Search size={32} className="text-muted-foreground" />
+              </div>
+              <h3 className="text-xl font-bold text-foreground">
+                No shops found
+              </h3>
+              <p className="text-muted-foreground mt-2 font-medium">
+                Try adjusting your search or filters to find more repair
+                experts.
               </p>
             </div>
           )}
         </div>
+      </div>
 
-        <div className="space-y-5">
-          <FormField label="Full Name" className="md:col-span-2">
-            <input
-              value={resolvedFullName}
-              onChange={(event) => {
-                setIsFullNameEdited(true);
-                setFullName(event.target.value);
-              }}
-              required
-              className="h-14 w-full rounded-lg border border-gray-200 px-4 text-base font-medium text-[#111827] outline-none transition placeholder:text-[#AEB5BD] focus:border-[#84CC16] focus:ring-4 focus:ring-[#84CC16]/10"
-              placeholder="Demo"
-            />
-          </FormField>
-
-          <div className="grid gap-5 md:grid-cols-2">
-            <FormField label="Email Address">
-              <input
-                value={resolvedEmail}
-                onChange={(event) => {
-                  setIsEmailEdited(true);
-                  setEmail(event.target.value);
-                }}
-                required
-                type="email"
-                className="h-14 w-full rounded-lg border border-gray-200 px-4 text-base font-medium text-[#111827] outline-none transition placeholder:text-[#AEB5BD] focus:border-[#84CC16] focus:ring-4 focus:ring-[#84CC16]/10"
-                placeholder="iwmsadvisors@example.com"
-              />
-            </FormField>
-
-            <FormField label="Device Model Name">
-              <input
-                value={deviceModel}
-                onChange={(event) => setDeviceModel(event.target.value)}
-                required
-                className="h-14 w-full rounded-lg border border-gray-200 px-4 text-base font-medium text-[#111827] outline-none transition placeholder:text-[#AEB5BD] focus:border-[#84CC16] focus:ring-4 focus:ring-[#84CC16]/10"
-                placeholder="iPhone 15 Pro Max"
-              />
-            </FormField>
-
-            <FormField label="IMEI Number">
-              <input
-                value={imeiNumber}
-                onChange={(event) => setImeiNumber(event.target.value)}
-                className="h-14 w-full rounded-lg border border-gray-200 px-4 text-base font-medium text-[#111827] outline-none transition placeholder:text-[#AEB5BD] focus:border-[#84CC16] focus:ring-4 focus:ring-[#84CC16]/10"
-                placeholder="Enter IMEI"
-              />
-            </FormField>
-
-            <FormField label="Upload Video of Device Problem">
-              <label className="flex h-14 cursor-pointer items-center gap-3 rounded-lg border border-gray-200 px-4 text-base font-medium text-[#AEB5BD] transition hover:border-[#84CC16]">
-                <Paperclip size={22} />
-                <span className="truncate">
-                  {problemFile?.name || "Upload Video"}
-                </span>
-                <input
-                  type="file"
-                  accept="video/mp4,video/quicktime,video/x-msvideo,image/*"
-                  className="sr-only"
-                  onChange={(event) =>
-                    setProblemFile(event.target.files?.[0] || null)
-                  }
-                />
-              </label>
-            </FormField>
-          </div>
-
-          <FormField label="Problem Description">
-            <textarea
-              value={problemDescription}
-              onChange={(event) => setProblemDescription(event.target.value)}
-              required
-              rows={4}
-              className="min-h-28 w-full resize-none rounded-lg border border-gray-200 px-4 py-4 text-base font-medium text-[#111827] outline-none transition placeholder:text-[#AEB5BD] focus:border-[#84CC16] focus:ring-4 focus:ring-[#84CC16]/10"
-              placeholder="Describe about your problem"
-            />
-          </FormField>
-        </div>
-
-        <div className="mt-8 flex justify-end">
-          <button
-            type="submit"
-            disabled={
-              createRepairRequest.isPending ||
-              !selectedShopkeeper ||
-              shopkeepers.length === 0
-            }
-            className="flex h-[52px] min-w-28 items-center justify-center rounded-full bg-[#84CC16] px-8 text-base font-bold text-white shadow-[0_12px_24px_rgba(132,204,22,0.28)] transition hover:bg-[#73B713] disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {createRepairRequest.isPending ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            ) : (
-              "Done"
-            )}
-          </button>
-        </div>
-      </form>
+      <RepairRequestFormModal
+        shopkeeper={selectedShopkeeper}
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+      />
     </div>
   );
 }
 
 function ShopkeeperCard({
   shopkeeper,
-  selected,
   onSelect,
 }: {
   shopkeeper: Shopkeeper;
-  selected: boolean;
   onSelect: () => void;
 }) {
   const rating =
     shopkeeper.averageRating > 0 ? shopkeeper.averageRating.toFixed(1) : "4.8";
-  const reviews = shopkeeper.totalReviews > 0 ? shopkeeper.totalReviews : 312;
+  const reviews = shopkeeper.totalReviews > 0 ? shopkeeper.totalReviews : 124;
 
   return (
-    <article
-      className={`relative rounded-lg border bg-white p-5 transition ${
-        selected
-          ? "border-[#84CC16] shadow-[0_0_0_1px_rgba(132,204,22,0.35)]"
-          : "border-gray-200 hover:border-[#B7E46C]"
-      }`}
-    >
-      {selected && (
-        <span className="absolute right-4 top-4 rounded-full bg-[#84CC16] px-3 py-1 text-xs font-bold text-white">
-          Selected
-        </span>
-      )}
-
-      <div className="relative mb-3 h-[60px] w-[60px] overflow-hidden rounded-lg bg-gray-100">
-        <Image
-          src="/no-image.jpg"
-          alt=""
-          fill
-          sizes="60px"
-          className="object-cover"
-        />
+    <article className="group relative rounded-[32px] border border-border bg-card p-6 transition-all hover:shadow-2xl hover:shadow-primary/5 hover:border-primary/20 flex flex-col h-full">
+      <div className="flex items-start justify-between mb-4">
+        <div className="relative h-16 w-16 overflow-hidden rounded-2xl bg-surface border-2 border-white dark:border-white/5 shadow-sm">
+          <Image
+            src="/no-image.jpg"
+            alt=""
+            fill
+            sizes="64px"
+            className="object-cover"
+          />
+        </div>
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 text-primary">
+          <Star size={16} fill="currentColor" />
+          <span className="text-sm font-black">{rating}</span>
+        </div>
       </div>
 
-      <h2 className="text-lg font-medium text-[#111827]">
+      <h2 className="text-xl font-black text-foreground group-hover:text-primary transition-colors line-clamp-1">
         {shopkeeper.shopName || "TechCare Mobile"}
       </h2>
 
-      <div className="mt-1 flex items-center gap-1.5 text-sm">
-        <Star size={16} fill="#84CC16" className="text-[#84CC16]" />
-        <span className="font-bold text-[#111827]">{rating}</span>
-        <span className="text-[#6B7280]">· {reviews} reviews</span>
-      </div>
-
-      <div className="mt-5 flex items-start gap-2 text-sm font-medium text-[#6B7280]">
-        <MapPin size={17} className="mt-0.5 shrink-0 text-[#8A939F]" />
+      <div className="mt-2 flex items-center gap-2 text-sm font-medium text-muted-foreground">
+        <MapPin size={16} className="shrink-0" />
         <span className="line-clamp-1">
-          {shopkeeper.shopAddress || "42 Wallaby Way, Sydney, NSW 2000"}
+          {shopkeeper.shopAddress || "42 Wallaby Way, Sydney"}
         </span>
       </div>
 
-      <div className="mt-3 flex flex-wrap gap-2">
+      <div className="mt-4 flex flex-wrap gap-2">
         {services.map((service) => {
           const Icon = service.icon;
           return (
             <span
               key={service.label}
-              className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 px-3 py-1 text-xs font-medium text-[#111827]"
+              className="inline-flex items-center gap-1.5 rounded-full bg-surface border border-border px-3 py-1 text-[11px] font-bold text-foreground/70 uppercase tracking-wider"
             >
-              <Icon size={13} />
+              <Icon size={12} />
               {service.label}
             </span>
           );
         })}
       </div>
 
-      <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-[#F1FBE3] px-3 py-1 text-sm font-semibold text-[#84CC16]">
-        <Clock3 size={14} />
-        2-4 hrs estimated
+      <div className="mt-6 pt-6 border-t border-border flex items-center justify-between">
+        <div className="flex flex-col">
+          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+            Est. Time
+          </span>
+          <div className="flex items-center gap-1.5 text-sm font-black text-foreground">
+            <Clock3 size={14} className="text-primary" />
+            2-4 Hours
+          </div>
+        </div>
+        <span className="text-sm font-bold text-muted-foreground">
+          {reviews} reviews
+        </span>
       </div>
 
-      <button
-        type="button"
+      <Button
         onClick={onSelect}
-        className={`mt-5 h-11 w-full rounded-full border-2 text-base font-bold transition ${
-          selected
-            ? "border-[#84CC16] bg-[#84CC16] text-white shadow-[0_10px_18px_rgba(132,204,22,0.28)]"
-            : "border-[#84CC16] bg-white text-[#84CC16] hover:bg-[#F7FEE7]"
-        }`}
+        className="mt-6 w-full h-12 rounded-2xl font-black uppercase tracking-wider text-xs bg-primary text-primary-foreground shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
       >
-        {selected ? "Selected" : "Select"}
-      </button>
+        Request Repair
+      </Button>
     </article>
   );
 }
@@ -353,28 +216,9 @@ function ShopCardSkeleton() {
       {Array.from({ length: 6 }).map((_, index) => (
         <div
           key={index}
-          className="h-[260px] animate-pulse rounded-lg border border-gray-200 bg-gray-50"
+          className="h-[340px] animate-pulse rounded-[32px] border border-border bg-muted/50"
         />
       ))}
     </>
-  );
-}
-
-function FormField({
-  label,
-  children,
-  className,
-}: {
-  label: string;
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <label className={`block ${className || ""}`}>
-      <span className="mb-2 block text-base font-semibold text-[#111827]">
-        {label}
-      </span>
-      {children}
-    </label>
   );
 }

@@ -41,6 +41,15 @@ export type RepairRequestStatus =
   | "repair_in_progress"
   | "completed";
 
+export interface ShopkeeperNote {
+  _id?: string;
+  message: string;
+  date: string;
+  cost?: number;
+  estimatedDays?: number;
+  status: string;
+}
+
 export interface RepairRequest {
   _id: string;
   shopkeeperId:
@@ -57,6 +66,9 @@ export interface RepairRequest {
   IMEINumber?: string;
   description: string;
   status: RepairRequestStatus;
+  images?: { public_id: string; url: string }[];
+  timeline?: unknown[];
+  shopkeeperNotes?: ShopkeeperNote[];
   createdAt: string;
   updatedAt: string;
 }
