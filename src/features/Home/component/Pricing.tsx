@@ -20,7 +20,7 @@ export default function Pricing() {
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-4xl md:text-5xl font-black text-[#0F172A] mb-4"
+          className="text-4xl md:text-5xl font-black text-[#0F172A] dark:text-white mb-4"
         >
           Flexible <span className="text-blue-500">Pricing</span> That Fits Your{" "}
           <span className="text-primary">Needs</span>

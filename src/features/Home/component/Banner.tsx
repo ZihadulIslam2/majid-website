@@ -79,8 +79,9 @@ export default function Banner() {
   ];
 
   return (
-    <section className="relative flex min-h-[680px] overflow-hidden lg:h-[778px] lg:min-h-0">
+    <section className="relative flex min-h-[680px] overflow-hidden lg:h-[1060px] lg:min-h-0">
       {/* ================= BACKGROUND ================= */}
+
       <div className="absolute inset-0 z-0 bg-background">
         <div className="absolute left-1/2 top-[42%] h-[330px] w-[860px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[linear-gradient(90deg,rgba(189,230,59,0.9)_0%,rgba(124,203,180,0.72)_48%,rgba(49,138,251,0.9)_100%)] blur-[82px] md:h-[520px] md:w-[1280px] lg:h-[658px] lg:w-[1520px]" />
         <div className="absolute left-1/2 top-[42%] h-[230px] w-[560px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-background/20 blur-[60px] md:h-[420px] md:w-[900px] lg:h-[538px] lg:w-[1016px]" />
@@ -89,7 +90,7 @@ export default function Banner() {
       </div>
 
       {/* ================= CONTENT ================= */}
-      <div className="relative z-10 flex w-full flex-col items-center px-4 py-20 text-center sm:px-6 md:py-24 lg:px-[200px] lg:py-[120px]">
+      <div className="relative z-10 flex w-full flex-col items-center px-4 pb-20 pt-32 text-center sm:px-6 md:pb-24 md:pt-44 lg:px-[200px] lg:pb-[120px] lg:pt-[180px]">
         <motion.h1
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -97,11 +98,11 @@ export default function Banner() {
           className="w-full max-w-[1100px] text-[28px] font-black leading-[1.12] text-white sm:text-5xl md:text-6xl lg:text-[72px] lg:leading-[1.2]"
         >
           <span className="hidden whitespace-nowrap lg:block">
-            Verify Global <span className="text-brand-lime-soft">IMEI</span>
+            Verify Global <span className="">IMEI</span>
           </span>
           <span className="hidden whitespace-nowrap lg:block">
             <span className="text-brand-lime-soft">Intelligence</span>{" "}
-            <span className="text-brand-blue-soft">in Real-Time</span>
+            <span className="">in Real-Time</span>
           </span>
           <span className="block lg:hidden">
             Verify Global <span className="text-brand-lime-soft">IMEI</span>
@@ -109,16 +110,14 @@ export default function Banner() {
           <span className="block text-brand-lime-soft lg:hidden">
             Intelligence
           </span>
-          <span className="block text-brand-blue-soft lg:hidden">
-            in Real-Time
-          </span>
+          <span className="block  lg:hidden">in Real-Time</span>
         </motion.h1>
 
         <motion.p
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="mt-3 max-w-[760px] text-base leading-7 text-muted-foreground sm:text-lg lg:text-xl"
+          className="mt-3 max-w-[760px] text-base leading-7 text-muted-foreground text-white sm:text-lg lg:text-xl"
         >
           Advanced AI-powered diagnostics and blacklisting checks for secure{" "}
           <br className="hidden md:block" />
@@ -311,7 +310,7 @@ export default function Banner() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
-          className="mt-12 flex w-full max-w-[1003px] flex-wrap justify-center gap-4"
+          className="mt-12 flex w-full max-w-6xl flex-wrap justify-center gap-4"
         >
           {quickChecks.map((tag, i) => (
             <button
@@ -319,7 +318,7 @@ export default function Banner() {
               onClick={() => {
                 setImei("356782084912443");
               }}
-              className="h-[50px] cursor-pointer rounded-full bg-[linear-gradient(166.27deg,rgba(132,204,22,0.2)_5.25%,rgba(91,94,13,0.2)_137.31%)] px-8 text-base font-extrabold leading-none text-white shadow-[0_3px_8px_rgba(136,144,194,0.25),0_7px_21px_rgba(37,44,97,0.2)] transition hover:bg-primary/30 max-md:h-auto max-md:min-h-[44px] max-md:px-5 max-md:text-sm"
+              className="h-[50px] cursor-pointer rounded-full bg-[linear-gradient(166.27deg,rgba(132,204,22,0.2)_5.25%,rgba(91,94,13,0.2)_137.31%)] px-8 text-base font-extrabold leading-none text-white shadow-[0_3px_8px_rgba(136,144,194,0.25),0_7px_21px_rgba(37,44,97,0.2)] transition hover:bg-primary/30 max-md:h-auto max-md:min-h-[44px] max-md:px-5 max-md:text-sm border border-white "
             >
               {tag}
             </button>

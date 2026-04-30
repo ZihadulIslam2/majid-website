@@ -32,16 +32,16 @@ export default function ForTheSmartBuyer() {
             initial={{ opacity: 0, x: -30 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
-            className="bg-white rounded-[40px] p-10 md:p-14 flex flex-col justify-between"
+            className="bg-white dark:bg-card rounded-[40px] p-10 md:p-14 flex flex-col justify-between"
           >
             <div>
               <div className="w-14 h-14 bg-[#3B82F6] rounded-full flex items-center justify-center mb-10 text-white shadow-lg shadow-blue-500/20">
                 <ShoppingCart size={28} />
               </div>
-              <h3 className="text-3xl font-black text-[#0F172A] mb-4">
+              <h3 className="text-3xl font-black text-[#0F172A] dark:text-white mb-4">
                 For the Smart Buyer
               </h3>
-              <p className="text-[#64748B] text-base leading-relaxed mb-10 max-w-sm">
+              <p className="text-[#64748B] text-base leading-relaxed mb-10 max-w-sm dark:text-white">
                 Never get scammed again. Verify sellers claims instantly and
                 negotiate with confidence using real-time data.
               </p>
@@ -50,7 +50,7 @@ export default function ForTheSmartBuyer() {
                 {buyerFeatures.map((item, i) => (
                   <li
                     key={i}
-                    className="flex items-center gap-3 text-sm font-semibold text-[#334155]"
+                    className="flex items-center gap-3 text-sm font-semibold text-[#334155] dark:text-white"
                   >
                     <div className="w-1.5 h-1.5 bg-[#3B82F6] rounded-full" />
                     {item}
@@ -77,7 +77,7 @@ export default function ForTheSmartBuyer() {
                     </div>
                   ))}
                 </div>
-                <span className="ml-4 text-xs font-black text-[#94A3B8] uppercase">
+                <span className="ml-4 text-xs font-black text-[#94A3B8] dark:text-white uppercase">
                   +10k
                 </span>
               </div>
@@ -93,16 +93,16 @@ export default function ForTheSmartBuyer() {
             initial={{ opacity: 0, x: 30 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
-            className="bg-white rounded-[40px] p-10 md:p-14 flex flex-col justify-between"
+            className="bg-white dark:bg-card rounded-[40px] p-10 md:p-14 flex flex-col justify-between"
           >
             <div>
               <div className="w-14 h-14 bg-[#84CC16] rounded-full flex items-center justify-center mb-10 text-white shadow-lg shadow-lime-500/20">
                 <Store size={28} />
               </div>
-              <h3 className="text-3xl font-black text-[#0F172A] mb-4">
+              <h3 className="text-3xl font-black text-[#0F172A] dark:text-white mb-4">
                 For Shop Owners
               </h3>
-              <p className="text-[#64748B] text-base leading-relaxed mb-10 max-w-sm">
+              <p className="text-[#64748B] text-base leading-relaxed mb-10 max-w-sm dark:text-white">
                 Protect your business margins. Automatically generate trade-in
                 values and verify inventory legitimacy at scale.
               </p>
@@ -111,7 +111,7 @@ export default function ForTheSmartBuyer() {
                 {shopFeatures.map((item, i) => (
                   <li
                     key={i}
-                    className="flex items-center gap-3 text-sm font-semibold text-[#334155]"
+                    className="flex items-center gap-3 text-sm font-semibold text-[#334155] dark:text-white"
                   >
                     <div className="w-1.5 h-1.5 bg-[#84CC16] rounded-full" />
                     {item}

@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 
 export default function StartChecking() {
   return (
-    <section className="relative py-10 overflow-hidden bg-[#F8FAFC]">
+    <section className="relative py-10 overflow-hidden bg-[#F8FAFC] dark:bg-card">
       {/* Background Decorative Waves */}
       <div className="absolute top-1/2 left-0 -translate-y-1/2 -translate-x-1/2 w-[600px] h-[600px] pointer-events-none opacity-10">
         {[1, 2, 3, 4].map((i) => (
@@ -39,7 +39,7 @@ export default function StartChecking() {
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-2xl md:text-5xl font-black text-[#0F172A] mb-6 tracking-tight"
+          className="text-2xl md:text-5xl font-black text-[#0F172A] dark:text-white mb-6 tracking-tight"
         >
           Start Checking Devices with Confidence
         </motion.h2>
@@ -49,7 +49,7 @@ export default function StartChecking() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ delay: 0.1 }}
-          className="text-[#64748B] text-sm md:text-lg mb-8 max-w-2xl mx-auto font-medium"
+          className="text-[#64748B] text-sm md:text-lg mb-8 max-w-2xl mx-auto font-medium dark:text-white"
         >
           Get instant IMEI reports, AI-powered insights, and avoid risky
           purchases

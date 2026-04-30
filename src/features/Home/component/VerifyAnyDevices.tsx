@@ -38,7 +38,7 @@ const steps = [
 
 export default function VerifyAnyDevices() {
   return (
-    <section className="bg-background py-20 lg:h-[672px] lg:py-[100px] border-t border-border">
+    <section className="bg-background py-10 lg:h-[672px] lg:py-[100px]">
       <div className="mx-auto w-full max-w-[1520px] px-4 sm:px-6 lg:px-0">
         {/* Heading Area */}
         <div className="mb-12 text-center lg:mb-12">
@@ -55,7 +55,7 @@ export default function VerifyAnyDevices() {
           {steps.map((step, index) => (
             <div
               key={index}
-              className={`${step.bgColor} dark:bg-card/50 flex h-[340px] flex-col items-center rounded-[32px] px-12 pt-[71px] text-center transition-transform duration-300 hover:scale-[1.02] border border-transparent dark:border-border`}
+              className={`${step.bgColor} flex h-[340px] flex-col items-center rounded-[32px] px-12 pt-[71px] text-center transition-transform duration-300 hover:scale-[1.02] border border-transparent dark:border-border`}
             >
               {/* Icon Circle */}
               <div className="mb-8 flex h-16 w-16 items-center justify-center rounded-full bg-background shadow-sm">
@@ -63,10 +63,10 @@ export default function VerifyAnyDevices() {
               </div>
 
               {/* Text Content */}
-              <h3 className="mb-4 text-[22px] font-extrabold leading-[1.2] text-foreground">
+              <h3 className="mb-4 text-[22px] font-extrabold leading-[1.2] text-foreground dark:text-card">
                 {step.title}
               </h3>
-              <p className="max-w-[266px] text-base leading-[1.2] text-muted-foreground">
+              <p className="max-w-[266px] text-base leading-[1.2] text-muted-foreground dark:text-card/80">
                 {step.description}
               </p>
             </div>

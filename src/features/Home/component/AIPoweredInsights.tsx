@@ -5,7 +5,7 @@ import { Zap, BarChart3, ShieldCheck, AlertCircle } from "lucide-react";
 
 export default function AIPoweredInsights() {
   return (
-    <section className="py-24 bg-white">
+    <section className="py-24">
       <div className="mx-auto container px-6">
         {/* Section Title */}
         <motion.h2
@@ -24,20 +24,20 @@ export default function AIPoweredInsights() {
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="md:col-span-2 bg-[#E1F0FF] p-8 md:p-12 rounded-[32px] flex flex-col justify-between"
+            className="md:col-span-2 bg-[#E1F0FF] dark:bg-card p-8 md:p-12 rounded-[32px] flex flex-col justify-between"
           >
             <div>
-              <h3 className="text-2xl font-bold text-[#0F172A] mb-4">
+              <h3 className="text-2xl font-bold text-[#0F172A] dark:text-white mb-4">
                 Comprehensive Device DNA
               </h3>
-              <p className="text-[#64748B] text-sm md:text-base max-w-sm mb-8">
+              <p className="text-[#64748B] dark:text-white text-sm md:text-base max-w-sm mb-8">
                 Our AI cross-references 140+ global databases to provide an
                 instant health score and ownership history.
               </p>
             </div>
 
             {/* Report Mockup Element */}
-            <div className="bg-[#BBDDFF] rounded-2xl p-6 border border-[#99CCFF]">
+            <div className="bg-[#BBDDFF]  rounded-2xl p-6 border border-[#99CCFF]">
               <div className="text-[10px] font-black text-[#3B82F6] uppercase tracking-widest mb-3">
                 Report
               </div>

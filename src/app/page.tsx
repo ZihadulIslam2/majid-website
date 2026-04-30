@@ -13,7 +13,7 @@ import StartChecking from "@/features/Home/component/StartChecking";
 export default function Home() {
   return (
     <main className="">
-      <div className="pt-20 md:pt-[100px]">
+      <div>
         <Navbar />
         <Banner />
       </div>

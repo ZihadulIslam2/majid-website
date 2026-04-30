@@ -17,7 +17,7 @@ import {
 
 export default function ExperienceSmarter() {
   return (
-    <section className="py-24 bg-white overflow-hidden">
+    <section className="py-24 overflow-hidden">
       <div className="mx-auto container px-6">
         <div className="flex flex-col lg:flex-row items-center gap-16 lg:gap-24">
           {/* Left Side: Content */}
@@ -26,7 +26,7 @@ export default function ExperienceSmarter() {
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="text-4xl md:text-6xl font-extrabold text-[#0F172A] leading-tight mb-8"
+              className="text-4xl md:text-6xl font-extrabold text-[#0F172A] dark:text-white leading-tight mb-8"
             >
               Experience <span className="text-[#84CC16]">Smarter</span> <br />
               Device <span className="text-[#3B82F6]">Verification</span>
@@ -37,7 +37,7 @@ export default function ExperienceSmarter() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.1 }}
-              className="text-[#64748B] text-lg mb-10 max-w-lg"
+              className="text-[#64748B] dark:text-white text-lg mb-10 max-w-lg"
             >
               Make confident decisions when buying or selling devices. Our
               comprehensive reports give you the full picture in seconds.
@@ -60,10 +60,10 @@ export default function ExperienceSmarter() {
                   transition={{ delay: i * 0.1 }}
                   className="flex items-center gap-4"
                 >
-                  <div className="bg-[#F0FDF4] p-1 rounded-full">
+                  <div className="bg-[#F0FDF4] dark:bg-card/80 p-1 border border-gray-50 rounded-full">
                     <Check className="w-5 h-5 text-[#22C55E]" />
                   </div>
-                  <span className="text-[#1E293B] font-semibold text-lg">
+                  <span className="text-[#1E293B] dark:text-white font-semibold text-lg">
                     {item}
                   </span>
                 </motion.div>
@@ -87,15 +87,15 @@ export default function ExperienceSmarter() {
               initial={{ opacity: 0, x: 50 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
-              className="bg-white rounded-[32px] shadow-[0_40px_80px_-15px_rgba(0,0,0,0.1)] border border-gray-100 overflow-hidden"
+              className="bg-white dark:bg-card rounded-[32px] shadow-[0_40px_80px_-15px_rgba(0,0,0,0.1)] border border-gray-100 overflow-hidden"
             >
               {/* Dashboard Header */}
               <div className="p-8 border-b border-gray-50 flex flex-wrap justify-between items-start gap-4">
                 <div>
-                  <h3 className="text-2xl font-bold text-[#0F172A] mb-1">
+                  <h3 className="text-2xl font-bold text-[#0F172A] mb-1 dark:text-white">
                     iPhone 15 Pro
                   </h3>
-                  <p className="text-xs text-[#94A3B8] font-mono">
+                  <p className="text-xs text-[#94A3B8] font-mono dark:text-white">
                     IMEI: 356782084912443
                   </p>
 
@@ -119,7 +119,7 @@ export default function ExperienceSmarter() {
                   <span className="bg-[#3B82F6] text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider mb-2 inline-block">
                     Clean
                   </span>
-                  <div className="text-2xl font-black text-[#0F172A]">
+                  <div className="text-2xl font-black text-[#0F172A] dark:text-white">
                     $942.00
                   </div>
                   <p className="text-[10px] text-[#94A3B8] font-bold uppercase">
@@ -129,7 +129,7 @@ export default function ExperienceSmarter() {
               </div>
 
               {/* Status Cards Grid */}
-              <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-4 ">
                 <StatusCard
                   icon={<ShieldCheck className="text-[#22C55E]" />}
                   label="Global Blacklist"
@@ -158,8 +158,8 @@ export default function ExperienceSmarter() {
 
               {/* Technical Breakdown */}
               <div className="px-8 pb-8">
-                <div className="bg-[#F8FAFC] rounded-2xl p-6">
-                  <h4 className="text-xs font-bold text-[#0F172A] uppercase tracking-widest mb-6">
+                <div className="bg-[#F8FAFC] dark:bg-card/80 dark:border-white rounded-2xl p-6">
+                  <h4 className="text-xs font-bold text-[#0F172A] dark:text-white uppercase tracking-widest mb-6">
                     Technical Breakdown
                   </h4>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-y-6 gap-x-4">
@@ -229,15 +229,17 @@ function StatusCard({
   status: "check" | "alert";
 }) {
   return (
-    <div className="flex items-center gap-4 p-4 rounded-2xl border border-gray-50 shadow-sm bg-white">
+    <div className="flex items-center gap-4 p-4 rounded-2xl border border-gray-50 shadow-sm bg-white dark:bg-card/80">
       <div
-        className={`p-2 rounded-xl ${status === "check" ? "bg-[#F0FDF4]" : "bg-[#FFF1F1]"}`}
+        className={`p-2 rounded-xl border dark:border-white ${status === "check" ? "bg-[#F0FDF4] dark:bg-card/80 " : "bg-[#FFF1F1] dark:bg-card/80 "}`}
       >
         {icon}
       </div>
       <div className="flex-1">
-        <p className="text-[10px] font-bold text-[#0F172A]">{label}</p>
-        <p className="text-[10px] text-[#94A3B8]">{sub}</p>
+        <p className="text-[10px] font-bold text-[#0F172A] dark:text-white">
+          {label}
+        </p>
+        <p className="text-[10px] text-[#94A3B8] dark:text-white">{sub}</p>
       </div>
       {status === "check" ? (
         <Check className="w-4 h-4 text-[#22C55E]" />
@@ -259,10 +261,12 @@ function TechItem({
 }) {
   return (
     <div>
-      <p className="text-[9px] font-bold text-[#94A3B8] uppercase mb-1">
+      <p className="text-[9px] font-bold text-[#94A3B8] dark:text-white uppercase mb-1">
         {label}
       </p>
-      <p className="text-[11px] font-bold text-[#0F172A]">{value}</p>
+      <p className="text-[11px] font-bold text-[#0F172A] dark:text-white">
+        {value}
+      </p>
     </div>
   );
 }

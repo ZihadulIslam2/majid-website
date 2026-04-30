@@ -44,7 +44,7 @@ const reviews = [
 
 export default function Review() {
   return (
-    <section className="py-24 bg-[#FFFFFF]">
+    <section className="py-24 bg-[#FFFFFF] dark:bg-card">
       <div className="mx-auto container px-6">
         {/* Heading */}
         <div className="text-center mb-16">
@@ -52,7 +52,7 @@ export default function Review() {
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-4xl md:text-5xl font-black text-[#0F172A] mb-6"
+            className="text-4xl md:text-5xl font-black text-[#0F172A] dark:text-white mb-6"
           >
             What our <span className="text-[#84CC16]">Customers</span> are{" "}
             <span className="text-[#3B82F6]">Saying</span>
@@ -78,7 +78,7 @@ export default function Review() {
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
-              className="break-inside-avoid bg-white p-8 rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.03)] border border-gray-50 hover:shadow-[0_30px_60px_rgba(0,0,0,0.06)] transition-all group"
+              className="break-inside-avoid bg-white dark:bg-card p-8 rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.03)] border border-gray-50 hover:shadow-[0_30px_60px_rgba(0,0,0,0.06)] transition-all group"
             >
               <div className="flex items-center gap-4 mb-6">
                 <div className="h-12 w-12 rounded-full ring-2 ring-gray-50 overflow-hidden shrink-0">
@@ -91,7 +91,7 @@ export default function Review() {
                   />
                 </div>
                 <div>
-                  <h4 className="text-sm font-black text-[#3B82F6] group-hover:text-[#0F172A] transition-colors">
+                  <h4 className="text-sm font-black text-[#3B82F6] group-hover:text-[#0F172A] transition-colors dark:text-white">
                     {review.name}
                   </h4>
                   <p className="text-[11px] font-bold text-[#94A3B8] uppercase tracking-wider">
@@ -99,7 +99,7 @@ export default function Review() {
                   </p>
                 </div>
               </div>
-              <p className="text-[#1E293B] text-sm leading-relaxed font-medium">
+              <p className="text-[#1E293B] dark:text-white text-sm leading-relaxed font-medium">
                 {review.text}
               </p>
             </motion.div>
