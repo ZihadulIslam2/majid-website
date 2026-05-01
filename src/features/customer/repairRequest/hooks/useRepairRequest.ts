@@ -9,6 +9,7 @@ import {
   getShopkeeperRepairRequests,
   updateRepairRequestStatusByShopkeeper,
   addRepairRequestNote,
+  updateRepairRequestStatus,
 } from "../api/repair-request.api";
 
 export function useShopkeeperRepairRequests(page = 1, limit = 10) {
@@ -115,6 +116,27 @@ export function useUpdateRepairQuoteStatus() {
     onError: (error: { response?: { data?: { message?: string } } }) => {
       toast.error(
         error.response?.data?.message || "Failed to update quote status",
+      );
+    },
+  });
+}
+
+export function useUpdateRepairRequestStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (params: { id: string; status: string }) =>
+      updateRepairRequestStatus(params),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({
+        queryKey: ["repair-request", data.data._id],
+      });
+      queryClient.invalidateQueries({ queryKey: ["repair-requests"] });
+      toast.success("Repair request status updated successfully");
+    },
+    onError: (error: { response?: { data?: { message?: string } } }) => {
+      toast.error(
+        error.response?.data?.message || "Failed to update request status",
       );
     },
   });

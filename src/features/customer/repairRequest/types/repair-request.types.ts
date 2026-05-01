@@ -32,6 +32,7 @@ export interface RepairRequestPayload {
 }
 
 export type RepairRequestStatus =
+  | "submitted"
   | "request_submitted"
   | "in_review"
   | "quote_sent"
