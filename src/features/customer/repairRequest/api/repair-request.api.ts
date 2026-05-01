@@ -121,16 +121,3 @@ export const addRepairRequestNote = async ({
   const response = await api.put(`/repair-requests/add-note/${id}`, formData);
   return response.data;
 };
-
-export const updateRepairRequestStatus = async ({
-  id,
-  status,
-}: {
-  id: string;
-  status: string;
-}): Promise<ApiResponse<RepairRequest>> => {
-  const response = await api.put(`/repair-requests/update-status/${id}`, {
-    status,
-  });
-  return response.data;
-};

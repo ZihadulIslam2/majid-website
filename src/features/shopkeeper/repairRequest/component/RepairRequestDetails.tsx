@@ -250,15 +250,63 @@ export default function RepairRequestDetails({ id }: { id: string }) {
                 </div>
               )}
 
-              {(request.status === "approved" ||
-                request.status === "repair_in_progress") && (
+              {request.status === "approved" && (
                 <div className="bg-card border border-border rounded-[32px] p-6 shadow-sm flex flex-wrap gap-4 items-center">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1">
+                      Next Step
+                    </p>
+                    <p className="text-sm font-bold text-foreground">
+                      Customer has approved the quote. Start the repair when
+                      ready.
+                    </p>
+                  </div>
                   <Button
-                    onClick={() => handleStatusUpdate("completed")}
-                    className="bg-[#3B82F6] hover:bg-[#2563EB] text-white rounded-full px-8 h-12 font-black text-xs uppercase tracking-widest transition-transform active:scale-95 shadow-lg shadow-blue-500/20"
+                    onClick={() => handleStatusUpdate("repair_in_progress")}
+                    className="bg-[#8B5CF6] hover:bg-[#7C3AED] text-white rounded-full px-8 h-12 font-black text-xs uppercase tracking-widest transition-transform active:scale-95 shadow-lg shadow-purple-500/20 shrink-0"
                     disabled={updateStatus.isPending}
                   >
-                    Complete Repair
+                    Start Repair
+                  </Button>
+                </div>
+              )}
+
+              {request.status === "repair_in_progress" && (
+                <div className="bg-card border border-border rounded-[32px] p-6 shadow-sm flex flex-wrap gap-4 items-center">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1">
+                      Repair Active
+                    </p>
+                    <p className="text-sm font-bold text-foreground">
+                      Click below once all hardware work is finished.
+                    </p>
+                  </div>
+                  <Button
+                    onClick={() => handleStatusUpdate("completed")}
+                    className="bg-[#22C55E] hover:bg-[#16A34A] text-white rounded-full px-8 h-12 font-black text-xs uppercase tracking-widest transition-transform active:scale-95 shadow-lg shadow-green-500/20 shrink-0"
+                    disabled={updateStatus.isPending}
+                  >
+                    Mark as Completed
+                  </Button>
+                </div>
+              )}
+
+              {request.status === "quote_accepted" && (
+                <div className="bg-card border border-border rounded-[32px] p-6 shadow-sm flex flex-wrap gap-4 items-center">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1">
+                      Quote Accepted
+                    </p>
+                    <p className="text-sm font-bold text-foreground">
+                      Mark the repair as completed when all work is finished.
+                    </p>
+                  </div>
+                  <Button
+                    onClick={() => handleStatusUpdate("completed")}
+                    className="bg-[#22C55E] hover:bg-[#16A34A] text-white rounded-full px-8 h-12 font-black text-xs uppercase tracking-widest transition-transform active:scale-95 shadow-lg shadow-green-500/20 shrink-0"
+                    disabled={updateStatus.isPending}
+                  >
+                    Mark as Completed
                   </Button>
                 </div>
               )}
