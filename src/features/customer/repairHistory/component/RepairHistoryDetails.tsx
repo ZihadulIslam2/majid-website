@@ -426,27 +426,29 @@ export default function RepairHistoryDetails({ id }: { id: string }) {
                 </div>
               )}
 
-              {currentStatus === "approved" && latestQuote && (
-                <div className="rounded-3xl border border-green-200 bg-green-50/50 p-6 shadow-sm dark:bg-green-900/10 dark:border-green-900/50">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-base font-black text-foreground">
-                      Quote Approved
-                    </h3>
-                    <span className="rounded-full bg-green-100 px-2.5 py-0.5 text-[10px] font-bold text-green-700 uppercase tracking-wider dark:bg-green-900/50 dark:text-green-400">
-                      Accepted
-                    </span>
+              {(currentStatus === "approved" ||
+                currentStatus === "quote_accepted") &&
+                latestQuote && (
+                  <div className="rounded-3xl border border-green-200 bg-green-50/50 p-6 shadow-sm dark:bg-green-900/10 dark:border-green-900/50">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-base font-black text-foreground">
+                        Quote Approved
+                      </h3>
+                      <span className="rounded-full bg-green-100 px-2.5 py-0.5 text-[10px] font-bold text-green-700 uppercase tracking-wider dark:bg-green-900/50 dark:text-green-400">
+                        Accepted
+                      </span>
+                    </div>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-2xl font-black text-foreground">
+                        ${latestQuote.cost?.toFixed(2)}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-sm font-medium text-muted-foreground">
+                      You have approved the repair. The shopkeeper will start
+                      the work shortly.
+                    </p>
                   </div>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-2xl font-black text-foreground">
-                      ${latestQuote.cost?.toFixed(2)}
-                    </span>
-                  </div>
-                  <p className="mt-2 text-sm font-medium text-muted-foreground">
-                    You have approved the repair. The shopkeeper will start the
-                    work shortly.
-                  </p>
-                </div>
-              )}
+                )}
 
               {currentStatus === "rejected" && latestQuote && (
                 <div className="rounded-3xl border border-red-200 bg-red-50/50 p-6 shadow-sm dark:bg-red-900/10 dark:border-red-900/50">

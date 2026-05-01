@@ -59,11 +59,7 @@ const navItems = [
     label: "Inventory",
     href: "/shopkeeper/inventory",
   },
-  {
-    icon: <Bell size={20} />,
-    label: "Notifications",
-    href: "/shopkeeper/notifications",
-  },
+
   {
     icon: <Wrench size={20} />,
     label: "Repair Requests",
