@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import Image from "next/image";
@@ -19,11 +18,6 @@ import {
   useUpdateRepairQuoteStatus,
 } from "@/features/customer/repairRequest/hooks/useRepairRequest";
 import { Button } from "@/components/ui/button";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
-import QRCode from "qrcode";
-// import RepairOfferModal from "./RepairOfferModal";
-// import { set } from "idb-keyval";
 
 const timelineSteps = [
   {
@@ -58,11 +52,9 @@ const timelineSteps = [
   },
 ];
 
-export default function RepairHistoryDetails({ id }: { id: string }) {
+export default function RepairInvoice({ id }: { id: string }) {
   const { data: detailsData, isLoading } = useRepairRequestDetails(id);
   const updateQuote = useUpdateRepairQuoteStatus();
-  // const [isCounterOffer, setCounterOffer] = useState(false);
-
   const [lightbox, setLightbox] = useState<{
     urls: string[];
     index: number;
@@ -104,290 +96,6 @@ export default function RepairHistoryDetails({ id }: { id: string }) {
   const quoteNotes = request.shopkeeperNotes?.filter((n) => n.cost) || [];
   const latestQuote =
     quoteNotes.length > 0 ? quoteNotes[quoteNotes.length - 1] : null;
-
-  // const generateInvoicePDF = () => {
-  //   if (!request) return;
-
-  //   const doc = new jsPDF();
-  //   const shopName =
-  //     typeof request.shopkeeperId === "object" && request.shopkeeperId?.shopName
-  //       ? request.shopkeeperId.shopName
-  //       : "Unknown Shop";
-  //   // const latestQuote = request.shopkeeperNotes?.length > 0
-  //   //   ? request.shopkeeperNotes[request.shopkeeperNotes.length - 1]
-  //   //   : null;
-
-  //   // --- MODERN HEADER ---
-  //   // Background rectangle for header
-  //   doc.setFillColor(15, 23, 42); // Navy Dark
-  //   doc.rect(0, 0, 210, 50, "F");
-
-  //   // Header Title
-  //   doc.setTextColor(255, 255, 255);
-  //   doc.setFont("helvetica", "bold");
-  //   doc.setFontSize(26);
-  //   doc.text("INVOICE", 14, 30);
-
-  //   // Shop Info (Right Aligned)
-  //   doc.setFontSize(12);
-  //   doc.setFont("helvetica", "normal");
-  //   doc.text(shopName, 196, 25, { align: "right" });
-  //   doc.setFontSize(10);
-  //   doc.setTextColor(156, 163, 175); // Light gray
-  //   doc.text(`Request ID: #${request._id.slice(-8).toUpperCase()}`, 196, 32, {
-  //     align: "right",
-  //   });
-
-  //   // --- CUSTOMER & DEVICE INFO (GRID LAYOUT) ---
-  //   doc.setTextColor(31, 41, 55); // Dark Slate
-
-  //   // Column 1: Customer
-  //   doc.setFont("helvetica", "bold");
-  //   doc.setFontSize(10);
-  //   doc.text("CUSTOMER DETAILS", 14, 65);
-  //   doc.setFont("helvetica", "normal");
-  //   doc.setFontSize(11);
-  //   doc.text(request.firstName, 14, 72);
-  //   doc.setTextColor(75, 85, 99);
-  //   doc.text(request.email, 14, 78);
-
-  //   // Column 2: Date & Status
-  //   doc.setTextColor(31, 41, 55);
-  //   doc.setFont("helvetica", "bold");
-  //   doc.text("INVOICE DATE", 120, 65);
-  //   doc.setFont("helvetica", "normal");
-  //   doc.text(format(new Date(), "MMMM dd, yyyy"), 120, 72);
-
-  //   doc.setFont("helvetica", "bold");
-  //   doc.text("STATUS", 120, 82);
-  //   doc.setFont("helvetica", "normal");
-  //   doc.text(request.status.replace("_", " ").toUpperCase(), 120, 88);
-
-  //   // --- DEVICE CARD ---
-  //   doc.setFillColor(248, 250, 252); // Light background for device info
-  //   doc.roundedRect(14, 98, 182, 30, 3, 3, "F");
-
-  //   doc.setTextColor(31, 41, 55);
-  //   doc.setFont("helvetica", "bold");
-  //   doc.text("DEVICE:", 20, 108);
-  //   doc.setFont("helvetica", "normal");
-  //   doc.text(
-  //     `${request.deviceModel} (IMEI: ${request.IMEINumber || "N/A"})`,
-  //     40,
-  //     108,
-  //   );
-
-  //   doc.setFont("helvetica", "bold");
-  //   doc.text("ISSUE:", 20, 118);
-  //   doc.setFont("helvetica", "normal");
-  //   doc.text(request.description, 40, 118, { maxWidth: 150 });
-
-  //   // --- TABLE SECTION ---
-  //   const notes =
-  //     request.shopkeeperNotes?.map((n) => [
-  //       format(new Date(n.date), "MMM dd, yyyy"),
-  //       n.message,
-  //       `${n.estimatedDays} Days`,
-  //       `$${(n.cost ?? 0).toFixed(2)}`,
-  //     ]) || [];
-
-  //   autoTable(doc, {
-  //     startY: 140,
-  //     head: [["Date", "Description", "Est. Time", "Cost"]],
-  //     body: notes,
-  //     theme: "grid",
-  //     headStyles: {
-  //       fillColor: [15, 23, 42],
-  //       textColor: [255, 255, 255],
-  //       fontSize: 10,
-  //       fontStyle: "bold",
-  //       halign: "center",
-  //     },
-  //     bodyStyles: {
-  //       fontSize: 9,
-  //       textColor: [55, 65, 81],
-  //     },
-  //     columnStyles: {
-  //       3: { halign: "right", fontStyle: "bold" }, // Cost column
-  //     },
-  //     alternateRowStyles: {
-  //       fillColor: [249, 250, 251],
-  //     },
-  //   });
-
-  //   // --- SUMMARY SECTION ---
-  //   const finalY = (doc as any).lastAutoTable.finalY + 10;
-  //   const totalCost =
-  //     request.shopkeeperNotes?.reduce((sum, n) => sum + (n.cost || 0), 0) || 0;
-
-  //   doc.setFont("helvetica", "bold");
-  //   doc.setFontSize(12);
-  //   doc.text("Total Amount Due:", 140, finalY);
-  //   doc.setFontSize(16);
-  //   doc.setTextColor(15, 23, 42);
-  //   doc.text(`$${totalCost.toFixed(2)}`, 196, finalY, { align: "right" });
-
-  //   // --- FOOTER ---
-  //   const pageHeight = doc.internal.pageSize.height;
-  //   doc.setDrawColor(229, 231, 235);
-  //   doc.line(14, pageHeight - 25, 196, pageHeight - 25);
-
-  //   doc.setFontSize(9);
-  //   doc.setTextColor(107, 114, 128);
-  //   doc.text(`Thank you for choosing ${shopName}.`, 105, pageHeight - 15, {
-  //     align: "center",
-  //   });
-  //   doc.text(
-  //     "Computer generated invoice - no signature required.",
-  //     105,
-  //     pageHeight - 10,
-  //     { align: "center" },
-  //   );
-
-  //   doc.save(`Invoice_${request.deviceModel}_${request._id.slice(-5)}.pdf`);
-  // };
-
-  const generateInvoicePDF = async () => {
-    if (!request) return;
-
-    const doc = new jsPDF();
-    const shopName =
-      typeof request.shopkeeperId === "object" && request.shopkeeperId?.shopName
-        ? request.shopkeeperId.shopName
-        : "Unknown Shop";
-
-    // --- MODERN HEADER ---
-    doc.setFillColor(15, 23, 42);
-    doc.rect(0, 0, 210, 50, "F");
-
-    doc.setTextColor(255, 255, 255);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(26);
-    doc.text("INVOICE", 14, 30);
-
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "normal");
-    doc.text(shopName, 196, 25, { align: "right" });
-    doc.setFontSize(10);
-    doc.setTextColor(156, 163, 175);
-    doc.text(`Request ID: #${request._id.slice(-8).toUpperCase()}`, 196, 32, {
-      align: "right",
-    });
-
-    // --- CUSTOMER & DEVICE INFO ---
-    doc.setTextColor(31, 41, 55);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
-    doc.text("CUSTOMER DETAILS", 14, 65);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(11);
-    doc.text(request.firstName, 14, 72);
-    doc.setTextColor(75, 85, 99);
-    doc.text(request.email, 14, 78);
-
-    doc.setTextColor(31, 41, 55);
-    doc.setFont("helvetica", "bold");
-    doc.text("INVOICE DATE", 120, 65);
-    doc.setFont("helvetica", "normal");
-    doc.text(format(new Date(), "MMMM dd, yyyy"), 120, 72);
-
-    doc.setFont("helvetica", "bold");
-    doc.text("STATUS", 120, 82);
-    doc.setFont("helvetica", "normal");
-    doc.text(request.status.replace("_", " ").toUpperCase(), 120, 88);
-
-    // --- DEVICE CARD ---
-    doc.setFillColor(248, 250, 252);
-    doc.roundedRect(14, 98, 182, 30, 3, 3, "F");
-    doc.setTextColor(31, 41, 55);
-    doc.setFont("helvetica", "bold");
-    doc.text("DEVICE:", 20, 108);
-    doc.setFont("helvetica", "normal");
-    doc.text(
-      `${request.deviceModel} (IMEI: ${request.IMEINumber || "N/A"})`,
-      40,
-      108,
-    );
-    doc.setFont("helvetica", "bold");
-    doc.text("ISSUE:", 20, 118);
-    doc.setFont("helvetica", "normal");
-    doc.text(request.description, 40, 118, { maxWidth: 150 });
-
-    // --- TABLE SECTION ---
-    const notes =
-      request.shopkeeperNotes?.map((n) => [
-        format(new Date(n.date), "MMM dd, yyyy"),
-        n.message,
-        `${n.estimatedDays} Days`,
-        `$${(n.cost ?? 0).toFixed(2)}`,
-      ]) || [];
-
-    autoTable(doc, {
-      startY: 140,
-      head: [["Date", "Description", "Est. Time", "Cost"]],
-      body: notes,
-      theme: "grid",
-      headStyles: {
-        fillColor: [15, 23, 42],
-        textColor: [255, 255, 255],
-        fontStyle: "bold",
-        halign: "center",
-      },
-      columnStyles: { 3: { halign: "right", fontStyle: "bold" } },
-    });
-
-    // --- SUMMARY SECTION & QR CODE ---
-    const finalY = (doc as any).lastAutoTable.finalY + 15;
-    const totalCost =
-      request.shopkeeperNotes?.reduce((sum, n) => sum + (n.cost || 0), 0) || 0;
-
-    // Total Amount (Right Side)
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
-    doc.text("Total Amount Due:", 140, finalY);
-    doc.setFontSize(16);
-    doc.setTextColor(15, 23, 42);
-    doc.text(`$${totalCost.toFixed(2)}`, 196, finalY, { align: "right" });
-
-    // QR Code Generation (Left Side)
-    try {
-      const qrLink = `http://localhost:3001/my-invoice/${request._id}`;
-      const qrDataUrl = await QRCode.toDataURL(qrLink, {
-        margin: 1,
-        width: 100,
-      });
-
-      doc.addImage(qrDataUrl, "PNG", 14, finalY - 5, 30, 30);
-
-      doc.setFontSize(8);
-      doc.setTextColor(107, 114, 128);
-      doc.text("Scan to view online", 14, finalY + 28);
-    } catch (err) {
-      console.error("QR Code Generation Error:", err);
-    }
-
-    // --- FOOTER ---
-    const pageHeight = doc.internal.pageSize.height;
-    doc.setDrawColor(229, 231, 235);
-    doc.line(14, pageHeight - 25, 196, pageHeight - 25);
-    doc.setFontSize(9);
-    doc.setTextColor(107, 114, 128);
-    doc.text(`Thank you for choosing ${shopName}.`, 105, pageHeight - 15, {
-      align: "center",
-    });
-    doc.text(
-      "Computer generated invoice - no signature required.",
-      105,
-      pageHeight - 10,
-      { align: "center" },
-    );
-
-    doc.save(`Invoice_${request.deviceModel}_${request._id.slice(-5)}.pdf`);
-  };
-
-  // const isCounterOfferFunc = (id: string | undefined) => {
-  //   setCounterOffer(true);
-  // };
 
   return (
     <>
@@ -451,14 +159,6 @@ export default function RepairHistoryDetails({ id }: { id: string }) {
                 Shopkeeper
               </p>
               <p className="text-sm font-bold text-foreground">{shopName}</p>
-            </div>
-            <div>
-              <button
-                className="rounded-full cursor-pointer bg-primary px-4 py-2 text-sm font-bold text-primary-foreground shadow-lg shadow-primary/20 hover:bg-primary/90 transition-colors"
-                onClick={generateInvoicePDF}
-              >
-                Invoice
-              </button>
             </div>
           </div>
 
@@ -692,12 +392,17 @@ export default function RepairHistoryDetails({ id }: { id: string }) {
                   <div className="flex gap-3">
                     <Button
                       variant="outline"
-                      className="flex-1 rounded-full hover:text-white font-bold h-11"
-
-                      // onClick={() => isCounterOfferFunc(latestQuote._id)}
-                      // disabled={updateQuote.isPending}
+                      className="flex-1 rounded-full font-bold h-11"
+                      onClick={() =>
+                        updateQuote.mutate({
+                          id,
+                          status: "rejected",
+                          shopkeeperNotesId: latestQuote?._id,
+                        })
+                      }
+                      disabled={updateQuote.isPending}
                     >
-                      Counter Offer
+                      Reject
                     </Button>
                     <Button
                       className="flex-1 rounded-full font-bold h-11 bg-primary text-primary-foreground shadow-lg shadow-primary/20"
@@ -835,10 +540,6 @@ export default function RepairHistoryDetails({ id }: { id: string }) {
               <X size={16} />
             </button>
           </div>
-          {/* <RepairOfferModal
-            isOpen={isCounterOffer}
-            onClose={() => setCounterOffer(false)}
-          /> */}
         </div>
       )}
     </>
