@@ -33,6 +33,7 @@ import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import { ScannerModal } from "@/components/shared/website/ScannerModal";
 import { BulkImeiUploadModal } from "@/components/shared/website/BulkImeiUploadModal";
+import { ImeiReportDetails } from "./ImeiReportDetails";
 
 export default function ScanDevice() {
   const [imei, setImei] = useState("");
@@ -474,6 +475,22 @@ export default function ScanDevice() {
               </div>
             ))}
           </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.7 }}
+        >
+          <ImeiReportDetails
+            result={scanResult}
+            caption="The scan response is organized into readable report fields for quick review."
+            meta={{
+              provider: selectedService?.name,
+              serviceId: selectedService?.serviceId ?? undefined,
+              message: "Single IMEI check completed successfully.",
+            }}
+          />
         </motion.div>
 
         <div
