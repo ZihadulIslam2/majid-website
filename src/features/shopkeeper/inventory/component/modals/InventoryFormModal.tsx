@@ -351,7 +351,7 @@ export function InventoryFormModal({
 
   const renderFormContent = () => (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 ">
         <div className="flex flex-col gap-y-8">
           {/* Left Column: Basic Details */}
           <div className="space-y-6">
@@ -426,7 +426,7 @@ export function InventoryFormModal({
                 name="modelNumber"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 block ml-1">
+                    <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 block ml-">
                       Model Number
                       <span className="text-red-500">*</span>
                     </FormLabel>

@@ -39,7 +39,7 @@ export function InventoryDetailsModal({
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="relative w-full max-w-4xl max-h-[90vh] bg-white rounded-[40px] shadow-2xl overflow-hidden border border-white/20 flex flex-col md:flex-row"
+        className="relative w-full max-w-4xl max-h-[90vh] bg-white dark:bg-background rounded-[40px] shadow-2xl overflow-hidden border border-white/20 flex flex-col md:flex-row"
       >
         {/* Product Image Section - Sticky on mobile/left on desktop */}
         <div className="w-full md:w-[350px] h-[300px] md:h-auto relative bg-slate-50 flex-shrink-0 border-r border-slate-100">
@@ -52,7 +52,7 @@ export function InventoryDetailsModal({
             />
           ) : (
             <div className="w-full h-full bg-slate-100 flex flex-col items-center justify-center gap-4">
-              <div className="w-20 h-20 rounded-3xl bg-white shadow-sm flex items-center justify-center text-slate-300">
+              <div className="w-20 h-20 rounded-3xl bg-white dark:bg-background  shadow-sm flex items-center justify-center text-slate-300">
                 <Smartphone className="w-10 h-10" />
               </div>
               <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
@@ -84,18 +84,18 @@ export function InventoryDetailsModal({
         </div>
 
         {/* Product Info Section - Scrollable */}
-        <div className="flex-1 flex flex-col min-h-0 bg-white">
+        <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-background">
           {/* Sticky Header */}
-          <div className="px-8 py-6 border-b border-slate-50 flex justify-between items-center bg-white/80 backdrop-blur-md sticky top-0 z-20">
+          <div className="px-8 py-6 border-b border-slate-50 flex justify-between items-center bg-white/80 dark:bg-background backdrop-blur-md sticky top-0 z-20">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-white">
                 <Smartphone size={20} />
               </div>
               <div>
-                <h2 className="text-xl font-black text-[#0F172A] tracking-tight leading-tight line-clamp-1">
+                <h2 className="text-xl font-black text-[#0F172A] dark:text-white tracking-tight leading-tight line-clamp-1">
                   {item.itemName}
                 </h2>
-                <p className="text-[11px] font-bold text-[#94A3B8] uppercase tracking-widest">
+                <p className="text-[11px] font-bold text-[#94A3B8] dark:text-gray-400 uppercase tracking-widest">
                   {item.imeiNumber || "IMEI NOT PROVIDED"}
                 </p>
               </div>
@@ -231,10 +231,10 @@ export function InventoryDetailsModal({
           </div>
 
           {/* Bottom Actions */}
-          <div className="px-8 py-6 bg-white border-t border-slate-50 flex gap-3">
+          <div className="px-8 py-6 bg-white border-t border-slate-50 flex gap-3 dark:bg-background ">
             <button
               onClick={onClose}
-              className="flex-1 py-4 bg-slate-900 text-white font-black text-[13px] rounded-2xl hover:bg-slate-800 transition shadow-xl active:scale-95 flex items-center justify-center gap-2 uppercase tracking-widest cursor-pointer"
+              className="flex-1 py-4 bg-slate-900 text-white dark:bg-slate-700 dark:text-white  font-black text-[13px] rounded-2xl hover:bg-slate-800 transition shadow-xl active:scale-95 flex items-center justify-center gap-2 uppercase tracking-widest cursor-pointer"
             >
               Done Reviewing
             </button>
