@@ -16,6 +16,8 @@ export const createInventory = async (input: CreateInventoryInput) => {
   const formData = new FormData();
   formData.append("itemName", input.itemName);
   if (input.imeiNumber) formData.append("imeiNumber", input.imeiNumber);
+  formData.append("modelNumber", input.modelNumber);
+  formData.append("quantity", String(input.quantity));
   if (input.purchasePrice !== undefined)
     formData.append("purchasePrice", String(input.purchasePrice));
   formData.append("expectedPrice", String(input.expectedPrice));

@@ -64,12 +64,10 @@ export default function Inventory() {
   }, [items]);
 
   const handleDelete = (id: string) => {
-    if (window.confirm("Are you sure you want to delete this item?")) {
-      deleteItem(id, {
-        onSuccess: () => toast.success("Item deleted"),
-        onError: () => toast.error("Delete failed"),
-      });
-    }
+    deleteItem(id, {
+      onSuccess: () => toast.success("Item deleted"),
+      onError: () => toast.error("Delete failed"),
+    });
   };
 
   const handleDeleteSold = (id: string) => {
