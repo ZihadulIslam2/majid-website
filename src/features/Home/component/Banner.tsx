@@ -20,7 +20,6 @@ import {
   ServiceCategory,
 } from "@/features/shopkeeper/scanDevice/types/scanDevice.types";
 import { ScannerModal } from "@/components/shared/website/ScannerModal";
-import { BulkImeiUploadModal } from "@/components/shared/website/BulkImeiUploadModal";
 
 export default function Banner() {
   const [imei, setImei] = useState("");
@@ -35,7 +34,7 @@ export default function Banner() {
   );
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
-  const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
+  // const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
   const { status } = useSession();
   const router = useRouter();
 
@@ -89,46 +88,27 @@ export default function Banner() {
 
   const quickChecks = [
     {
-      label: "iPhone all in one / best fee",
-      keyword: "apple",
-      type: "premium",
-    },
-    {
-      label: "Samsung full report / best before buy",
-      keyword: "samsung",
-      type: "premium",
-    },
-    {
-      label: "Mac full check / best before buy",
-      keyword: "mac",
-      type: "premium",
-    },
-    {
       label: "FMI",
       keyword: "fmi",
       type: "specialized",
-      description: "Find My iPhone Status",
       icon: "🔒",
     },
     {
       label: "Carrier",
       keyword: "carrier",
       type: "specialized",
-      description: "Carrier Info",
       icon: "📡",
     },
     {
       label: "MDM",
       keyword: "mdm",
       type: "specialized",
-      description: "Mobile Device Management",
       icon: "🛡️",
     },
     {
       label: "GSX",
       keyword: "gsx",
       type: "specialized",
-      description: "Global Service Exchange",
       icon: "🌐",
     },
   ];
@@ -382,31 +362,6 @@ export default function Banner() {
           transition={{ delay: 0.6 }}
           className="mt-12 flex w-full max-w-6xl flex-col items-center gap-8"
         >
-          {/* Premium Buttons Row */}
-          <div className="flex flex-wrap justify-center gap-4">
-            {quickChecks
-              .filter((tag) => tag.type === "premium")
-              .map((tag, i) => (
-                <motion.button
-                  key={i}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => {
-                    setSearchTerm(tag.keyword);
-                    setIsDropdownOpen(true);
-                  }}
-                  className="group relative h-[50px] cursor-pointer overflow-hidden rounded-full bg-gradient-to-r from-[#4380b9] via-[#5196d7d2] to-[#4888c451] px-8 text-base font-extrabold leading-none text-white shadow-[#4380b942] transition-all hover:shadow-[0_10px_25px_rgba(132,204,22,0.4)] max-md:h-auto max-md:min-h-[44px] max-md:px-5 max-md:text-sm"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-white/20 via-transparent to-white/20 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent" />
-
-                  <span className="relative flex items-center gap-2">
-                    {tag.label}
-                  </span>
-                </motion.button>
-              ))}
-          </div>
-
           {/* Specialized Cards Row */}
           <div className="flex flex-wrap justify-center gap-6">
             {quickChecks
@@ -455,13 +410,13 @@ export default function Banner() {
             >
               Free Checks
             </button>
-            <button
+            {/* <button
               onClick={() => setIsBulkModalOpen(true)}
               className="h-12 cursor-pointer rounded-full border-primary text-primary bg-white/20 border  px-8 text-base font-extrabold leading-none shadow-lg backdrop-blur-md transition-all active:scale-95 flex items-center gap-2 hover:bg-primary hover:text-white dark:text-white"
             >
               <Upload size={18} />
               Bulk Check
-            </button>
+            </button> */}
           </div>
         </motion.div>
       </div>
@@ -537,11 +492,11 @@ export default function Banner() {
         onClose={() => setIsScannerOpen(false)}
         onScan={(imei) => setImei(imei)}
       />
-      <BulkImeiUploadModal
+      {/* <BulkImeiUploadModal
         isOpen={isBulkModalOpen}
         onClose={() => setIsBulkModalOpen(false)}
         serviceId={selectedService?.serviceId || 6}
-      />
+      /> */}
     </section>
   );
 }
