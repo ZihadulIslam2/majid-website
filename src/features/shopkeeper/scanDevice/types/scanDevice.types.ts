@@ -1,5 +1,3 @@
-// src/features/shopkeeper/scanDevice/types/scanDevice.types.ts
-
 export interface RiskMeter {
   riskLevel: string;
   score: number;
@@ -24,36 +22,38 @@ export interface CheckItem {
 }
 
 export interface TechnicalBreakdown {
-  processor: string;
-  batteryHealth: {
+  processor?: string;
+  batteryHealth?: {
     percentage: number;
     cycleCount: number;
     label: string;
   };
-  storage: {
+  storage?: {
     total: string;
     free: string;
     label: string;
   };
-  modem: string;
-  display: string;
-  warranty: {
+  modem?: string;
+  display?: string;
+  warranty?: {
     status: string;
     label: string;
   };
-  origin: {
+  origin?: {
     country: string;
     modelNumber: string;
     label: string;
   };
-  activation: {
+  activation?: {
     lockStatus: string;
     simType: string;
     label: string;
   };
+  [key: string]: unknown; // for additional fields
 }
 
 export interface IMEIResult {
+  _id?: string;
   deviceName: string;
   imei: string;
   deviceStatus: string;
@@ -72,7 +72,30 @@ export interface IMEIResult {
     pdfCertificateUrl: string | null;
     isPdfGenerated: boolean;
   };
-  providerData: unknown;
+  providerData?: unknown;
+  createdAt?: string;
+  updatedAt?: string;
+  userId?: string;
+  oldGenerated?: boolean;
+}
+
+// API Response item (each IMEI check result)
+export interface IMEICheckItem {
+  imei: string;
+  ok: boolean;
+  message: string;
+  data: IMEIResult | null;
+  cached?: boolean;
+  serviceId?: number;
+  provider?: string;
+  rowNumber?: number;
+}
+
+// Main API Response for IMEI check (both single and multiple)
+export interface IMEICheckApiResponse {
+  success: boolean;
+  message: string;
+  data: IMEICheckItem[];
 }
 
 export interface IMEIService {
@@ -100,7 +123,7 @@ export interface ServiceListResponse {
   };
 }
 
-// ─── Batch IMEI Check Types ──────────────────────────────────────────────────
+// ─── Batch IMEI Check Types (for BulkResultView) ───────────────────────────
 
 export interface BatchImeiItemResult {
   rowNumber: number;
@@ -117,12 +140,12 @@ export interface BatchImeiSummary {
   total: number;
   successCount: number;
   failedCount: number;
-  sourceFile: string;
+  sourceFile?: string; // Optional for manual bulk check
 }
 
 export interface BatchImeiResponse {
   success: boolean;
-  message: string;
+  message?: string;
   summary: BatchImeiSummary;
   data: BatchImeiItemResult[];
 }
