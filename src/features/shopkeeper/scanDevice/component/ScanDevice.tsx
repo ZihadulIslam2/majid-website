@@ -88,7 +88,7 @@ export default function ScanDevice() {
 
   // Main form view
   return (
-    <div className="min-h-full p-4 md:p-10 bg-background space-y-12 mx-auto font-poppins">
+    <div className="min-h-full p-4 md:p-10 max-w-6xl space-y-12 mx-auto font-poppins">
       <ScanHeader />
 
       <motion.div

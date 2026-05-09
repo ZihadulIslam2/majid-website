@@ -1,4 +1,7 @@
+"use client";
+
 import { QrCode } from "lucide-react";
+import { useRef, useEffect } from "react";
 
 interface ScanInputProps {
   imei: string;
@@ -13,27 +16,59 @@ export const ScanInput = ({
   onScanClick,
   disabled,
 }: ScanInputProps) => {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    }
+  }, [imei]);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+    }
+  };
+
   return (
     <div className="relative group">
       <span className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3 block ml-4">
         Device Identifier
       </span>
-      <input
-        type="text"
-        placeholder="Enter IMEI / Serial Number"
-        value={imei}
-        onChange={(e) => setImei(e.target.value)}
-        disabled={disabled}
-        className="w-full px-8 py-3 rounded-full border border-gray-100 bg-[#FBFBFB] focus:border-[#84CC16] focus:bg-white focus:ring-4 focus:ring-[#84CC16]/5 outline-none transition-all text-lg font-semibold text-[#0F172A] placeholder:text-gray-400 disabled:opacity-50"
-      />
-      <button
-        onClick={onScanClick}
-        disabled={disabled}
-        title="Scan Barcode/QR"
-        className="absolute right-6 top-[70%] -translate-y-1/2 p-2 text-gray-400 hover:text-[#84CC16] hover:bg-[#84CC16]/5 rounded-xl transition-all cursor-pointer disabled:opacity-50"
-      >
-        <QrCode size={24} />
-      </button>
+
+      <div className="relative">
+        <textarea
+          ref={textareaRef}
+          value={imei}
+          onChange={(e) => setImei(e.target.value)}
+          onKeyDown={handleKeyDown}
+          disabled={disabled}
+          placeholder="Enter IMEI / Serial Number&#10;You can enter multiple IMEIs (one per line)"
+          rows={1}
+          className="w-full px-8 py-4 rounded-2xl border border-gray-100 bg-[#FBFBFB] focus:border-[#84CC16] focus:bg-white focus:ring-4 focus:ring-[#84CC16]/5 outline-none transition-all text-base font-semibold text-[#0F172A] placeholder:text-gray-400 disabled:opacity-50 resize-none overflow-y-auto custom-scrollbar leading-6 min-h-[56px] max-h-[200px]"
+          style={{
+            scrollbarWidth: "thin",
+            scrollbarColor: "#84CC16 #e2e8f0",
+          }}
+        />
+
+        <button
+          onClick={onScanClick}
+          disabled={disabled}
+          title="Scan Barcode/QR"
+          className="absolute right-4 top-5 p-2 text-gray-400 hover:text-[#84CC16] hover:bg-[#84CC16]/5 rounded-xl transition-all cursor-pointer disabled:opacity-50"
+        >
+          <QrCode size={22} />
+        </button>
+      </div>
+
+      {/* Helper text for multiple IMEIs */}
+      <div className="mt-2 ml-4 flex items-center gap-2">
+        <span className="text-[10px] font-medium text-gray-400">
+          💡 Tip: Enter one IMEI per line for multiple checks
+        </span>
+      </div>
     </div>
   );
 };
