@@ -121,10 +121,10 @@ export function InventoryDetailsModal({
               </div>
               <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-center">
                 <span className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                  Purchase
+                  Quantity
                 </span>
                 <span className="text-xs font-black text-slate-900">
-                  ${item.purchasePrice?.toLocaleString() || "0.00"}
+                  {item.quantity || 0} Units
                 </span>
               </div>
               <div className="p-4 bg-[#84CC16]/5 rounded-2xl border border-[#84CC16]/10 text-center">
@@ -142,6 +142,31 @@ export function InventoryDetailsModal({
                 <span className="text-xs font-black text-slate-900">
                   {new Date(item.createdAt).toLocaleDateString()}
                 </span>
+              </div>
+            </div>
+
+            {/* Technical Specifications */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-indigo-500 flex items-center justify-center text-white shadow-lg shadow-indigo-500/20">
+                  <Layers size={16} />
+                </div>
+                <h3 className="text-sm font-black text-[#0F172A] dark:text-white uppercase tracking-widest">
+                  Technical Specifications
+                </h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 bg-slate-50 dark:bg-slate-900/50 rounded-3xl p-6 border border-slate-100 dark:border-slate-800">
+                <SpecItem label="Brand" value={item.brand} />
+                <SpecItem label="SKU" value={item.sku} />
+                <SpecItem label="Model Number" value={item.modelNumber} />
+                <SpecItem label="Group Key" value={item.groupKey} />
+                <SpecItem label="Storage" value={item.storage} />
+                <SpecItem label="Color" value={item.color} />
+                <SpecItem label="Size" value={item.size} />
+                <SpecItem
+                  label="Min Stock"
+                  value={item.minStockLevel?.toString()}
+                />
               </div>
             </div>
 
@@ -241,6 +266,20 @@ export function InventoryDetailsModal({
           </div>
         </div>
       </motion.div>
+    </div>
+  );
+}
+
+function SpecItem({ label, value }: { label: string; value?: string }) {
+  if (!value) return null;
+  return (
+    <div className="flex justify-between items-center py-2 border-b border-slate-100 last:border-0 dark:border-slate-800">
+      <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">
+        {label}
+      </span>
+      <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+        {value}
+      </span>
     </div>
   );
 }

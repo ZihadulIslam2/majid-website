@@ -55,8 +55,14 @@ export function useDeleteInventory() {
 export function useCreateFromBarcode() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { code: string; userId: string }) =>
-      createFromBarcode(input),
+    mutationFn: (input: {
+      code: string;
+      userId: string;
+      imeiNumber?: string;
+      purchasePrice?: number;
+      currentState?: string;
+      image?: File;
+    }) => createFromBarcode(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: INVENTORY_KEYS.all });
     },

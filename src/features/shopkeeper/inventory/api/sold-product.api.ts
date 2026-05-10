@@ -1,10 +1,10 @@
 import { api } from "@/lib/api";
 import type { CreateSoldProductInput, SoldProductListResponse } from "../types";
 
-const BASE = "/sold-products";
+const BASE = "/inventory";
 
 export const getMySoldProducts = async (): Promise<SoldProductListResponse> => {
-  const response = await api.get(`${BASE}/my-products`);
+  const response = await api.get(`${BASE}/sold-items`);
   return response.data;
 };
 
