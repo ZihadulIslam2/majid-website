@@ -2,6 +2,7 @@
 
 import { CheckCircle2, Facebook, Twitter, Linkedin, Link2 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 
 export default function Footer() {
   return (
@@ -11,12 +12,17 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-12 mb-20">
           {/* Brand Info */}
           <div className="lg:col-span-4">
-            <div className="flex items-center gap-2 mb-8">
-              <span className="text-3xl font-black text-[#84CC16] tracking-tighter">
-                imoscan
-              </span>
-              <CheckCircle2 className="w-6 h-6 text-[#3B82F6] fill-[#3B82F6] text-white" />
-            </div>
+            <Link href="/">
+              <div className="relative h-12 w-[200px] mb-8 cursor-pointer">
+                <Image
+                  src="/images/logo.png"
+                  alt="Logo"
+                  fill
+                  quality={100}
+                  className="object-contain object-left"
+                />
+              </div>
+            </Link>
             <p className="text-muted-foreground text-base leading-relaxed max-w-xs">
               AI-powered IMEI & device intelligence platform providing real-time
               data for global mobile ecosystems.

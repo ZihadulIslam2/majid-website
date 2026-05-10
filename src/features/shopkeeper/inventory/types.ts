@@ -5,11 +5,25 @@ import { z } from "zod";
 export const InventoryItemSchema = z.object({
   _id: z.string(),
   itemName: z.string(),
+  sku: z.string().optional(),
+  brand: z.string().optional(),
+  color: z.string().optional(),
+  storage: z.string().optional(),
+  size: z.string().optional(),
   imeiNumber: z.string().optional(),
   modelNumber: z.string().optional(),
   quantity: z.number().optional(),
   purchasePrice: z.number().optional(),
   expectedPrice: z.number(),
+  productDetails: z.string().optional(),
+  aiDescription: z.string().optional(),
+  userId: z.any().optional(),
+  supplierId: z.string().optional(),
+  storeId: z.string().optional(),
+  groupKey: z.string().optional(),
+  minStockLevel: z.number().optional(),
+  type: z.enum(["inventory", "sold"]).optional(),
+  status: z.enum(["inventory", "sold"]).optional(),
   currentState: z.enum(["new", "good condition"]),
   image: z
     .object({
@@ -21,8 +35,6 @@ export const InventoryItemSchema = z.object({
   shopkeeper: z.string().optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
-  productDetails: z.string().optional(),
-  aiDescription: z.string().optional(),
   // Extended fields for website UI if needed
   specs: z
     .object({
@@ -57,20 +69,49 @@ export const InventorySingleResponseSchema = z.object({
 
 export const CreateInventorySchema = z.object({
   itemName: z.string().min(1, "Item name is required"),
+  sku: z.string().optional(),
+  brand: z.string().optional(),
+  color: z.string().optional(),
+  storage: z.string().optional(),
+  size: z.string().optional(),
   imeiNumber: z.string().optional(),
-  modelNumber: z.string().min(1, "Model number is required"),
+  modelNumber: z.string().optional(),
   quantity: z.coerce.number().min(1, "Quantity must be at least 1"),
   purchasePrice: z.coerce.number().optional(),
   expectedPrice: z.coerce
     .number()
     .min(0, "Expected price must be non-negative"),
+  productDetails: z.string().optional(),
+  aiDescription: z.string().optional(),
+  supplierId: z.string().optional(),
+  storeId: z.string().optional(),
+  groupKey: z.string().optional(),
+  minStockLevel: z.coerce.number().optional(),
+  type: z.enum(["inventory", "sold"]),
+  status: z.enum(["inventory", "sold"]),
   currentState: z.enum(["new", "good condition"]),
+  userId: z.string().optional(),
   image: z.any().optional(), // File or string for update
 });
 
 export const UpdateInventorySchema = z.object({
   itemName: z.string().min(1, "Item name is required").optional(),
+  sku: z.string().optional(),
+  brand: z.string().optional(),
+  color: z.string().optional(),
+  storage: z.string().optional(),
+  size: z.string().optional(),
+  quantity: z.coerce.number().min(1).optional(),
+  purchasePrice: z.coerce.number().optional(),
   expectedPrice: z.coerce.number().min(0).optional(),
+  productDetails: z.string().optional(),
+  aiDescription: z.string().optional(),
+  supplierId: z.string().optional(),
+  storeId: z.string().optional(),
+  groupKey: z.string().optional(),
+  minStockLevel: z.coerce.number().optional(),
+  type: z.enum(["inventory", "sold"]).optional(),
+  status: z.enum(["inventory", "sold"]).optional(),
   currentState: z.enum(["new", "good condition"]).optional(),
   image: z.any().optional(),
 });
@@ -79,15 +120,27 @@ export const UpdateInventorySchema = z.object({
 
 export const SoldProductSchema = z.object({
   _id: z.string(),
-  name: z.string(),
-  imeiNumber: z.string(),
-  model: z.string(),
-  quantity: z.number(),
-  purchasePrice: z.number(),
+  itemName: z.string(),
+  sku: z.string().optional(),
+  brand: z.string().optional(),
+  color: z.string().optional(),
+  storage: z.string().optional(),
+  size: z.string().optional(),
+  imeiNumber: z.string().optional(),
+  modelNumber: z.string().optional(),
+  quantity: z.number().optional(),
+  purchasePrice: z.number().optional(),
   expectedPrice: z.number(),
-  paidAmount: z.number(),
-  remainingDue: z.number(),
-  dueDate: z.string(),
+  productDetails: z.string().optional(),
+  aiDescription: z.string().optional(),
+  userId: z.any().optional(),
+  supplierId: z.string().optional(),
+  storeId: z.string().optional(),
+  groupKey: z.string().optional(),
+  minStockLevel: z.number().optional(),
+  type: z.enum(["inventory", "sold"]).optional(),
+  status: z.enum(["inventory", "sold"]).optional(),
+  currentState: z.enum(["new", "good condition"]).optional(),
   image: z
     .object({
       public_id: z.string().optional(),
@@ -95,7 +148,6 @@ export const SoldProductSchema = z.object({
     })
     .optional()
     .nullable(),
-  shopkeeperId: z.string().optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });

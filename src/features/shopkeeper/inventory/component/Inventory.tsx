@@ -20,7 +20,6 @@ import {
 import { InventorySkeleton } from "./skeletons/InventorySkeleton";
 import { InventoryFormModal } from "./modals/InventoryFormModal";
 import { InventoryDetailsModal } from "./modals/InventoryDetailsModal";
-import { SoldProductFormModal } from "./modals/SoldProductFormModal";
 import type { InventoryItem, SoldProduct } from "../types";
 import { toast } from "sonner";
 import {
@@ -32,27 +31,34 @@ import {
 
 export default function Inventory() {
   const { data: inventoryData, isLoading, isError } = useMyInventory();
+  const { data: soldData, isLoading: isSoldLoading } = useMySoldProducts();
   const { mutate: deleteItem } = useDeleteInventory();
+  const { mutate: deleteSold } = useDeleteSoldProduct();
 
   console.log(inventoryData);
 
-  // Find the item by _id and access its quantity
-  const item = inventoryData?.data?.find(
-    (item) => item._id === "69fcb33db608bb878574aa04",
-  );
-  const quantity = item ? item.quantity : "Item not found";
+  const items = useMemo(() => {
+    return (inventoryData?.data || []).filter(
+      (item: InventoryItem) => item.type === "inventory",
+    );
+  }, [inventoryData]);
+  const soldItems = useMemo(() => soldData?.data || [], [soldData]);
 
-  const { data: soldData, isLoading: isSoldLoading } = useMySoldProducts();
-  const { mutate: deleteSold } = useDeleteSoldProduct();
+  // Calculate total stock quantity
+  const totalQuantity = useMemo(() => {
+    return items.reduce(
+      (sum: number, item: InventoryItem) => sum + (item.quantity || 0),
+      0,
+    );
+  }, [items]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [isSoldFormOpen, setIsSoldFormOpen] = useState(false);
+  const [formForceType, setFormForceType] = useState<
+    "inventory" | "sold" | undefined
+  >(undefined);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
-
-  const items = useMemo(() => inventoryData?.data || [], [inventoryData]);
-  const soldItems = useMemo(() => soldData?.data || [], [soldData]);
 
   const filteredItems = useMemo(() => {
     return items.filter(
@@ -109,8 +115,8 @@ export default function Inventory() {
             Inventory
           </h1>
           <p className="text-[#64748B] font-bold text-sm dark:text-white ">
-            {items.length} Items in Stock - ${totalValue.toLocaleString()} Total
-            Revenue Potential
+            {totalQuantity} Units in Stock ({items.length} Models) - $
+            {totalValue.toLocaleString()} Total Revenue Potential
           </p>
         </div>
         <div className="flex items-center gap-4">
@@ -127,6 +133,7 @@ export default function Inventory() {
           <button
             onClick={() => {
               setEditingItem(null);
+              setFormForceType("inventory");
               setIsFormOpen(true);
             }}
             className="flex items-center gap-2 px-6 py-3 bg-[#84CC16] text-white font-black rounded-xl hover:bg-[#76b813] transition shadow-lg shadow-lime-500/20 active:scale-95 cursor-pointer"
@@ -146,7 +153,7 @@ export default function Inventory() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.05 }}
-              className="bg-white rounded-[32px] p-6 border border-border shadow-sm hover:shadow-xl dark:bg-card transition-all group relative "
+              className="bg-white rounded-[32px] p-6 border border-border shadow-sm dark:bg-card transition-all group relative "
             >
               <div className="flex gap-6">
                 <div className="relative w-32 h-32 rounded-2xl overflow-hidden flex-shrink-0 border border-gray-50 bg-slate-50">
@@ -155,7 +162,7 @@ export default function Inventory() {
                       src={item.image.url}
                       alt={item.itemName}
                       fill
-                      className="object-cover group-hover:scale-110 transition-transform duration-500"
+                      className="object-cover transition-transform duration-500"
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-slate-300">
@@ -170,12 +177,29 @@ export default function Inventory() {
                       <h3 className="text-[15px] font-black text-[#0F172A] leading-tight dark:text-white">
                         {item.itemName}
                       </h3>
+                      <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-1">
+                        {item.brand && (
+                          <span className="text-[11px] font-bold text-[#84CC16]">
+                            {item.brand}
+                          </span>
+                        )}
+                        {item.storage && (
+                          <span className="text-[11px] font-bold text-slate-400">
+                            • {item.storage}
+                          </span>
+                        )}
+                        {item.color && (
+                          <span className="text-[11px] font-bold text-slate-400">
+                            • {item.color}
+                          </span>
+                        )}
+                      </div>
                       <p className="text-[11px] font-bold text-[#94A3B8] mt-1 dark:text-gray-400">
-                        {item.imeiNumber || "No IMEI"}
+                        {item.imeiNumber || item.sku || "No IMEI/SKU"}
                       </p>
-                      <p className="text-[10px] font-medium text-[#CBD5E1] line-clamp-1">
+                      {/* <p className="text-[10px] font-medium text-[#CBD5E1] line-clamp-1">
                         Added {new Date(item.createdAt).toLocaleDateString()}
-                      </p>
+                      </p> */}
                     </div>
                     <div className="flex gap-1">
                       <button
@@ -195,16 +219,17 @@ export default function Inventory() {
                           align="end"
                           className="rounded-xl border-slate-100 p-2 shadow-xl"
                         >
-                          {/* <DropdownMenuItem
+                          <DropdownMenuItem
                             onClick={() => {
                               setEditingItem(item);
+                              setFormForceType("inventory");
                               setIsFormOpen(true);
                             }}
                             className="flex items-center gap-2 p-3 font-bold text-xs rounded-lg cursor-pointer"
                           >
                             <Edit2 size={14} />
                             Edit Item
-                          </DropdownMenuItem> */}
+                          </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => handleDelete(item._id)}
                             className="flex items-center gap-2 p-3 font-bold text-xs rounded-lg text-red-500 hover:text-red-600 hover:bg-red-50 cursor-pointer"
@@ -236,7 +261,7 @@ export default function Inventory() {
                       </span>
                     </div>
                     <span className="text-[10px] font-bold text-[#64748B] dark:text-gray-400">
-                      Qty : 1
+                      Qty : {item.quantity || 0}
                     </span>
                   </div>
                 </div>
@@ -268,7 +293,11 @@ export default function Inventory() {
             </p>
           </div>
           <button
-            onClick={() => setIsSoldFormOpen(true)}
+            onClick={() => {
+              setEditingItem(null);
+              setFormForceType("sold");
+              setIsFormOpen(true);
+            }}
             className="flex items-center gap-2 px-6 py-3 bg-[#84CC16] text-white font-black rounded-xl hover:bg-[#76b813] transition shadow-lg shadow-lime-500/20 active:scale-95 cursor-pointer"
           >
             <Plus size={18} strokeWidth={3} />
@@ -287,7 +316,7 @@ export default function Inventory() {
                   IMEI Number
                 </th>
                 <th className="px-6 py-5 text-[10px] font-black text-[#94A3B8] dark:text-white uppercase tracking-widest">
-                  Due Date
+                  Date Sold
                 </th>
                 <th className="px-6 py-5 text-[10px] font-black text-[#94A3B8] dark:text-white uppercase tracking-widest">
                   Purchase Price
@@ -306,17 +335,14 @@ export default function Inventory() {
             <tbody className="divide-y divide-gray-50">
               {soldItems.length > 0 ? (
                 soldItems.map((item: SoldProduct) => (
-                  <tr
-                    key={item._id}
-                    className="hover:bg-gray-50/50 transition-colors group"
-                  >
+                  <tr key={item._id} className="group">
                     <td className="px-8 py-5">
                       <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-xl bg-slate-50 border border-gray-100 overflow-hidden relative flex-shrink-0 dark:text-white">
                           {item.image?.url ? (
                             <Image
                               src={item.image.url}
-                              alt={item.name}
+                              alt={item.itemName}
                               fill
                               className="object-cover"
                             />
@@ -328,10 +354,10 @@ export default function Inventory() {
                         </div>
                         <div>
                           <p className="text-sm font-black text-[#0F172A] dark:text-white">
-                            {item.name}
+                            {item.itemName}
                           </p>
                           <p className="text-[10px] font-bold text-[#94A3B8] dark:text-white uppercase">
-                            {item.model}
+                            {item.modelNumber}
                           </p>
                         </div>
                       </div>
@@ -343,7 +369,7 @@ export default function Inventory() {
                     </td>
                     <td className="px-6 py-5">
                       <span className="text-xs font-bold text-[#64748B] dark:text-gray-400">
-                        {new Date(item.dueDate).toLocaleDateString()}
+                        {new Date(item.createdAt).toLocaleDateString()}
                       </span>
                     </td>
                     <td className="px-6 py-5 text-center">
@@ -358,16 +384,37 @@ export default function Inventory() {
                     </td>
                     <td className="px-6 py-5 text-center">
                       <span className="text-xs font-black text-[#0F172A] dark:text-white">
-                        {quantity}
+                        {item.quantity}
                       </span>
                     </td>
                     <td className="px-8 py-5 text-right">
-                      <button
-                        onClick={() => handleDeleteSold(item._id)}
-                        className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition cursor-pointer"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => setSelectedItem(item as InventoryItem)}
+                          className="p-2 text-slate-300 hover:text-[#84CC16] hover:bg-lime-50 rounded-xl transition cursor-pointer"
+                          title="View Details"
+                        >
+                          <Eye size={16} />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setEditingItem(item as InventoryItem);
+                            setFormForceType("sold");
+                            setIsFormOpen(true);
+                          }}
+                          className="p-2 text-slate-300 hover:text-blue-500 hover:bg-blue-50 rounded-xl transition cursor-pointer"
+                          title="Edit Record"
+                        >
+                          <Edit2 size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteSold(item._id)}
+                          className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition cursor-pointer"
+                          title="Delete Record"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -401,13 +448,10 @@ export default function Inventory() {
         onClose={() => {
           setIsFormOpen(false);
           setEditingItem(null);
+          setFormForceType(undefined);
         }}
         item={editingItem}
-      />
-
-      <SoldProductFormModal
-        isOpen={isSoldFormOpen}
-        onClose={() => setIsSoldFormOpen(false)}
+        forceType={formForceType}
       />
     </div>
   );

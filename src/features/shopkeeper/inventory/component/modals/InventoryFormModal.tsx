@@ -1,7 +1,12 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { useForm } from "react-hook-form";
+import {
+  useForm,
+  type Control,
+  type FieldErrors,
+  type FieldError,
+} from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useSession } from "next-auth/react";
 import {
@@ -34,6 +39,18 @@ import {
   CheckCircle2,
   Search,
   FileUp,
+  Tag,
+  Package,
+  Palette,
+  HardDrive,
+  Maximize2,
+  Users,
+  Store,
+  Layers,
+  AlertTriangle,
+  FileText,
+  Settings,
+  Plus,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
@@ -66,12 +83,14 @@ interface InventoryFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   item?: InventoryItem | null;
+  forceType?: "inventory" | "sold";
 }
 
 export function InventoryFormModal({
   isOpen,
   onClose,
   item,
+  forceType,
 }: InventoryFormModalProps) {
   const isEditMode = !!item;
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -80,11 +99,21 @@ export function InventoryFormModal({
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
   const barcodeImageInputRef = useRef<HTMLInputElement>(null);
   const fileUploadInputRef = useRef<HTMLInputElement>(null);
+  const barcodeDeviceImageInputRef = useRef<HTMLInputElement>(null);
   const [barcodeImagePreview, setBarcodeImagePreview] = useState<string | null>(
     null,
   );
   const [bulkFile, setBulkFile] = useState<File | null>(null);
   const [manualBarcode, setManualBarcode] = useState("");
+  const [barcodeImei, setBarcodeImei] = useState("");
+  const [barcodePurchasePrice, setBarcodePurchasePrice] = useState("");
+  const [barcodeCondition, setBarcodeCondition] = useState("new");
+  const [barcodeDeviceImage, setBarcodeDeviceImage] = useState<File | null>(
+    null,
+  );
+  const [barcodeDeviceImagePreview, setBarcodeDeviceImagePreview] = useState<
+    string | null
+  >(null);
 
   const { mutate: createItem, isPending: isCreating } = useCreateInventory();
   const { mutate: updateItem, isPending: isUpdating } = useUpdateInventory();
@@ -108,12 +137,27 @@ export function InventoryFormModal({
     resolver: zodResolver(CreateInventorySchema),
     defaultValues: {
       itemName: "",
+      sku: "",
+      brand: "",
+      color: "",
+      storage: "",
+      size: "",
       imeiNumber: "",
       modelNumber: "",
       quantity: 1,
       purchasePrice: undefined,
-      expectedPrice: undefined,
-      currentState: "new",
+      expectedPrice: 0,
+      productDetails: "",
+      aiDescription: "",
+      supplierId: "",
+      storeId: "",
+      groupKey: "",
+      minStockLevel: 2,
+      type: forceType || "inventory",
+      status: forceType || "inventory",
+      currentState: "good condition",
+      userId: "",
+      image: undefined,
     },
   });
 
@@ -121,25 +165,64 @@ export function InventoryFormModal({
     if (item) {
       form.reset({
         itemName: item.itemName,
+        sku: item.sku ?? "",
+        brand: item.brand ?? "",
+        color: item.color ?? "",
+        storage: item.storage ?? "",
+        size: item.size ?? "",
         imeiNumber: item.imeiNumber ?? "",
         modelNumber: item.modelNumber ?? "",
         quantity: item.quantity ?? 1,
         purchasePrice: item.purchasePrice,
         expectedPrice: item.expectedPrice,
+        productDetails: item.productDetails ?? "",
+        aiDescription: item.aiDescription ?? "",
+        supplierId:
+          typeof item.supplierId === "object"
+            ? (item.supplierId as unknown as { _id: string })?._id
+            : (item.supplierId ?? ""),
+        storeId:
+          typeof item.storeId === "object"
+            ? (item.storeId as unknown as { _id: string })?._id
+            : (item.storeId ?? ""),
+        groupKey: item.groupKey ?? "",
+        minStockLevel: item.minStockLevel ?? 2,
+        type: item.type ?? forceType ?? "inventory",
+        status: item.status ?? forceType ?? "inventory",
         currentState: item.currentState,
+        userId:
+          typeof item.userId === "object"
+            ? (item.userId as unknown as { _id: string })?._id
+            : (item.userId ?? ""),
+        image: undefined, // Reset image on edit
       });
     } else {
       form.reset({
         itemName: "",
+        sku: "",
+        brand: "",
+        color: "",
+        storage: "",
+        size: "",
         imeiNumber: "",
         modelNumber: "",
         quantity: 1,
         purchasePrice: undefined,
-        expectedPrice: undefined,
-        currentState: "new",
+        expectedPrice: 0,
+        productDetails: "",
+        aiDescription: "",
+        supplierId: "",
+        storeId: "",
+        groupKey: "",
+        minStockLevel: 2,
+        type: forceType || "inventory",
+        status: forceType || "inventory",
+        currentState: "good condition",
+        userId: "",
+        image: undefined,
       });
     }
-  }, [item, form, isOpen]);
+  }, [item, form, isOpen, forceType]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -167,10 +250,7 @@ export function InventoryFormModal({
         {
           id: item._id,
           input: {
-            itemName: values.itemName,
-            expectedPrice: values.expectedPrice,
-            currentState: values.currentState,
-            image: values.image,
+            ...values,
           },
         },
         {
@@ -183,13 +263,29 @@ export function InventoryFormModal({
       );
     } else {
       console.log("Inventory add form values:", values);
-      createItem(values, {
-        onSuccess: () => {
-          toast.success("Item added to inventory");
-          onClose();
+      createItem(
+        { ...values, userId: (session?.user as { id: string })?.id ?? "" },
+        {
+          onSuccess: () => {
+            toast.success("Item added to inventory");
+            onClose();
+          },
+          onError: () => toast.error("Addition failed"),
         },
-        onError: () => toast.error("Addition failed"),
-      });
+      );
+    }
+  };
+
+  const onError = (errors: FieldErrors<CreateInventoryInput>) => {
+    console.log("Validation Errors:", errors);
+    const errorMessages = Object.values(errors)
+      .map((err) => (err as FieldError)?.message)
+      .filter(Boolean);
+
+    if (errorMessages.length > 0) {
+      toast.error(`Please fix: ${errorMessages[0]}`);
+    } else {
+      toast.error("Form validation failed. Please check all fields.");
     }
   };
 
@@ -208,29 +304,9 @@ export function InventoryFormModal({
         { facingMode: "environment" },
         config,
         (decodedText) => {
-          if (session?.user?.id) {
-            handleCreateFromBarcode(
-              { code: decodedText, userId: session.user.id },
-              {
-                onSuccess: (data) => {
-                  setScanResultModalData(data);
-                  toast.success("Device found and added successfully");
-                  stopScanning();
-                },
-                onError: (error: unknown) => {
-                  const apiError = error as {
-                    response?: { data?: { message?: string } };
-                  };
-                  toast.error(
-                    apiError?.response?.data?.message ||
-                      "Failed to process barcode",
-                  );
-                },
-              },
-            );
-          } else {
-            toast.error("User not authenticated");
-          }
+          setManualBarcode(decodedText);
+          toast.success("Barcode scanned successfully");
+          stopScanning();
         },
         (errorMessage) => {
           // ignore scan errors
@@ -254,15 +330,33 @@ export function InventoryFormModal({
     setIsCameraActive(false);
   };
 
+  const resetBarcodeFields = () => {
+    setManualBarcode("");
+    setBarcodeImei("");
+    setBarcodePurchasePrice("");
+    setBarcodeCondition("new");
+    setBarcodeDeviceImage(null);
+    setBarcodeDeviceImagePreview(null);
+  };
+
   const handleManualBarcodeSubmit = () => {
     if (!manualBarcode.trim()) {
       toast.error("Please enter a barcode or IMEI");
       return;
     }
 
-    if (session?.user?.id) {
+    if ((session?.user as { id: string })?.id) {
       handleCreateFromBarcode(
-        { code: manualBarcode.trim(), userId: session.user.id },
+        {
+          code: manualBarcode.trim(),
+          userId: (session?.user as { id: string }).id,
+          imeiNumber: barcodeImei || undefined,
+          purchasePrice: barcodePurchasePrice
+            ? Number(barcodePurchasePrice)
+            : undefined,
+          currentState: barcodeCondition,
+          image: barcodeDeviceImage || undefined,
+        },
         {
           onSuccess: (data) => {
             setScanResultModalData(data);
@@ -287,7 +381,7 @@ export function InventoryFormModal({
   useEffect(() => {
     if (!isOpen) {
       stopScanning();
-      setManualBarcode("");
+      resetBarcodeFields();
     }
   }, [isOpen]);
 
@@ -308,31 +402,9 @@ export function InventoryFormModal({
     const html5QrCode = new Html5Qrcode("barcode-reader-hidden");
     try {
       const decodedText = await html5QrCode.scanFile(file, true);
-      if (session?.user?.id) {
-        handleCreateFromBarcode(
-          { code: decodedText, userId: session.user.id },
-          {
-            onSuccess: (data) => {
-              setScanResultModalData(data);
-              toast.success("Device found and added successfully");
-              setTimeout(() => setBarcodeImagePreview(null), 2000);
-            },
-            onError: (error: unknown) => {
-              const apiError = error as {
-                response?: { data?: { message?: string } };
-              };
-              toast.error(
-                apiError?.response?.data?.message ||
-                  "Failed to process barcode image",
-              );
-              setBarcodeImagePreview(null);
-            },
-          },
-        );
-      } else {
-        toast.error("User not authenticated");
-        setBarcodeImagePreview(null);
-      }
+      setManualBarcode(decodedText);
+      toast.success("Barcode extracted successfully");
+      setTimeout(() => setBarcodeImagePreview(null), 2000);
     } catch (err) {
       console.error("Scan error", err);
       toast.error("No barcode found in image. Please try a clearer photo.");
@@ -351,206 +423,45 @@ export function InventoryFormModal({
 
   const renderFormContent = () => (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 ">
-        <div className="flex flex-col gap-y-8">
-          {/* Left Column: Basic Details */}
-          <div className="space-y-6">
-            <div className="border-b border-slate-100 pb-3 mb-6">
-              <h4 className="text-sm font-black uppercase tracking-widest text-slate-900 mb-1">
-                Device Details
-              </h4>
-              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                Primary device information
-              </p>
-            </div>
+      <form
+        onSubmit={form.handleSubmit(onSubmit, onError)}
+        className="space-y-8"
+      >
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-20 gap-y-10">
+          {/* Left Column: Core Identity & Specs */}
+          <div className="space-y-10">
+            {/* Section: Device Identity */}
+            <div className="space-y-6">
+              <div className="border-b border-slate-100 pb-3 ">
+                <h4 className="text-xs font-black uppercase tracking-[0.2em] text-slate-900 mb-1 flex items-center gap-2 dark:text-white ">
+                  <Smartphone className="w-3.5 h-3.5 text-[#84CC16]" />
+                  Device Identity
+                </h4>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider dark:text-white ">
+                  Primary identification details
+                </p>
+              </div>
 
-            {/* Item Name */}
-            <FormField
-              control={form.control}
-              name="itemName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 block ml-1">
-                    Product Name <span className="text-red-500">*</span>
-                  </FormLabel>
-                  <FormControl>
-                    <div className="relative group">
-                      <div className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white rounded-[14px] flex items-center justify-center shadow-sm border border-slate-100 group-focus-within:border-[#84CC16]/30 group-focus-within:bg-[#84CC16]/5 transition-all z-10">
-                        <Smartphone className="w-4 h-4 text-slate-400 group-focus-within:text-[#84CC16] transition-colors" />
-                      </div>
-                      <Input
-                        placeholder="e.g. iPhone 15 Pro Max"
-                        className="pl-14 pr-4 bg-slate-50/80 border-slate-200 hover:border-slate-300 hover:bg-slate-50 rounded-[20px] h-[56px] font-bold text-slate-900 placeholder:text-slate-400 focus-visible:bg-white focus-visible:ring-4 focus-visible:ring-[#84CC16]/15 focus-visible:border-[#84CC16] transition-all shadow-sm"
-                        {...field}
-                      />
-                    </div>
-                  </FormControl>
-                  <FormMessage className="text-[10px] uppercase tracking-wider font-bold" />
-                </FormItem>
-              )}
-            />
-
-            {/* IMEI Number */}
-            {!isEditMode && (
-              <FormField
-                control={form.control}
-                name="imeiNumber"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 block ml-1">
-                      IMEI / Serial Number{" "}
-                      <span className="text-red-500">*</span>
-                    </FormLabel>
-                    <FormControl>
-                      <div className="relative group">
-                        <div className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white rounded-[14px] flex items-center justify-center shadow-sm border border-slate-100 group-focus-within:border-[#84CC16]/30 group-focus-within:bg-[#84CC16]/5 transition-all z-10">
-                          <Hash className="w-4 h-4 text-slate-400 group-focus-within:text-[#84CC16] transition-colors" />
-                        </div>
-                        <Input
-                          placeholder="Enter 15-digit code"
-                          className="pl-14 pr-4 bg-slate-50/80 border-slate-200 hover:border-slate-300 hover:bg-slate-50 rounded-[20px] h-[56px] font-bold text-slate-900 placeholder:text-slate-400 focus-visible:bg-white focus-visible:ring-4 focus-visible:ring-[#84CC16]/15 focus-visible:border-[#84CC16] transition-all shadow-sm"
-                          {...field}
-                        />
-                      </div>
-                    </FormControl>
-                    <FormMessage className="text-[10px] uppercase tracking-wider font-bold" />
-                  </FormItem>
-                )}
-              />
-            )}
-
-            {/* Model Number */}
-            {!isEditMode && (
-              <FormField
-                control={form.control}
-                name="modelNumber"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 block ml-">
-                      Model Number
-                      <span className="text-red-500">*</span>
-                    </FormLabel>
-                    <FormControl>
-                      <div className="relative group">
-                        <div className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white rounded-[14px] flex items-center justify-center shadow-sm border border-slate-100 group-focus-within:border-[#84CC16]/30 group-focus-within:bg-[#84CC16]/5 transition-all z-10">
-                          <Hash className="w-4 h-4 text-slate-400 group-focus-within:text-[#84CC16] transition-colors" />
-                        </div>
-                        <Input
-                          placeholder="Enter Model Number"
-                          className="pl-14 pr-4 bg-slate-50/80 border-slate-200 hover:border-slate-300 hover:bg-slate-50 rounded-[20px] h-[56px] font-bold text-slate-900 placeholder:text-slate-400 focus-visible:bg-white focus-visible:ring-4 focus-visible:ring-[#84CC16]/15 focus-visible:border-[#84CC16] transition-all shadow-sm"
-                          {...field}
-                        />
-                      </div>
-                    </FormControl>
-                    <FormMessage className="text-[10px] uppercase tracking-wider font-bold" />
-                  </FormItem>
-                )}
-              />
-            )}
-
-            {/* Condition */}
-            <FormField
-              control={form.control}
-              name="currentState"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 block ml-1">
-                    Device Condition <span className="text-red-500">*</span>
-                  </FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                    value={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger className="group bg-slate-50/80 border border-slate-200 hover:border-slate-300 hover:bg-slate-50 rounded-[20px] h-[56px] font-bold text-slate-900 focus:bg-white focus:ring-4 focus:ring-[#84CC16]/15 focus:border-[#84CC16] transition-all shadow-sm px-2">
-                        <div className="flex items-center gap-3 w-full">
-                          <div className="w-10 h-10 bg-white rounded-[14px] flex items-center justify-center shadow-sm border border-slate-100 group-focus:border-[#84CC16]/30 group-focus:bg-[#84CC16]/5 transition-all shrink-0">
-                            <Activity className="w-4 h-4 text-slate-400 group-focus:text-[#84CC16] transition-colors" />
-                          </div>
-                          <SelectValue placeholder="Select condition" />
-                        </div>
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent className="rounded-2xl border-slate-100 shadow-xl p-1">
-                      <SelectItem
-                        value="new"
-                        className="font-bold rounded-xl focus:bg-[#84CC16]/10 focus:text-[#84CC16] cursor-pointer py-3"
-                      >
-                        Brand New
-                      </SelectItem>
-                      <SelectItem
-                        value="good condition"
-                        className="font-bold rounded-xl focus:bg-[#84CC16]/10 focus:text-[#84CC16] cursor-pointer py-3"
-                      >
-                        Good Condition
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage className="text-[10px] uppercase tracking-wider font-bold" />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="quantity"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 block ml-1">
-                    Quantity <span className="text-red-500">*</span>
-                  </FormLabel>
-                  <FormControl>
-                    <div className="relative group">
-                      <div className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white rounded-[14px] flex items-center justify-center shadow-sm border border-slate-100 group-focus-within:border-[#84CC16]/30 group-focus-within:bg-[#84CC16]/5 transition-all z-10">
-                        <Hash className="w-4 h-4 text-slate-400 group-focus-within:text-[#84CC16] transition-colors" />
-                      </div>
-                      <Input
-                        type="number"
-                        min={1}
-                        placeholder="Enter quantity"
-                        className="pl-14 pr-4 bg-slate-50/80 border-slate-200 hover:border-slate-300 hover:bg-slate-50 rounded-[20px] h-[56px] font-bold text-slate-900 placeholder:text-slate-400 focus-visible:bg-white focus-visible:ring-4 focus-visible:ring-[#84CC16]/15 focus-visible:border-[#84CC16] transition-all shadow-sm"
-                        {...field}
-                      />
-                    </div>
-                  </FormControl>
-                  <FormMessage className="text-[10px] uppercase tracking-wider font-bold" />
-                </FormItem>
-              )}
-            />
-          </div>
-
-          {/* Right Column: Pricing & Media */}
-          <div className="space-y-6">
-            <div className="border-b border-slate-100 pb-3 mb-6">
-              <h4 className="text-sm font-black uppercase tracking-widest text-slate-900 mb-1">
-                Pricing & Media
-              </h4>
-              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                Set margins and upload photo
-              </p>
-            </div>
-
-            {/* Prices */}
-            <div className="grid grid-cols-2 gap-4">
-              {!isEditMode && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Item Name */}
                 <FormField
-                  control={form.control}
-                  name="purchasePrice"
+                  control={
+                    form.control as unknown as Control<CreateInventoryInput>
+                  }
+                  name="itemName"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 block ml-1">
-                        Cost Price ($)
+                    <FormItem className="sm:col-span-2">
+                      <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-white mb-2 block ml-1 dark:text-white ">
+                        Product Name <span className="text-red-500">*</span>
                       </FormLabel>
                       <FormControl>
                         <div className="relative group">
-                          <div className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white rounded-[14px] flex items-center justify-center shadow-sm border border-slate-100 group-focus-within:border-[#84CC16]/30 group-focus-within:bg-[#84CC16]/5 transition-all z-10">
-                            <DollarSign className="w-4 h-4 text-slate-400 group-focus-within:text-[#84CC16] transition-colors" />
+                          <div className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white dark:bg-slate-800 rounded-[14px] flex items-center justify-center shadow-sm border border-slate-100 dark:border-slate-700 group-focus-within:border-[#84CC16]/30 group-focus-within:bg-[#84CC16]/5 transition-all z-10">
+                            <Smartphone className="w-4 h-4 text-slate-400 group-focus-within:text-[#84CC16] transition-colors" />
                           </div>
                           <Input
-                            type="number"
-                            placeholder="0.00"
-                            className="pl-14 pr-4 bg-slate-50/80 border-slate-200 hover:border-slate-300 hover:bg-slate-50 rounded-[20px] h-[56px] font-bold text-slate-900 placeholder:text-slate-400 focus-visible:bg-white focus-visible:ring-4 focus-visible:ring-[#84CC16]/15 focus-visible:border-[#84CC16] transition-all shadow-sm"
+                            placeholder="e.g. iPhone X"
+                            className="pl-14 pr-4 bg-slate-50/80 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-[20px] h-[56px] font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:bg-white dark:focus-visible:bg-slate-950 focus-visible:ring-4 focus-visible:ring-[#84CC16]/15 focus-visible:border-[#84CC16] transition-all shadow-sm"
                             {...field}
                           />
                         </div>
@@ -559,120 +470,681 @@ export function InventoryFormModal({
                     </FormItem>
                   )}
                 />
-              )}
-              <FormField
-                control={form.control}
-                name="expectedPrice"
-                render={({ field }) => (
-                  <FormItem
-                    className={isEditMode ? "col-span-2" : "col-span-1"}
-                  >
-                    <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 block ml-1">
-                      Selling Price ($)
-                    </FormLabel>
-                    <FormControl>
-                      <div className="relative group">
-                        <div className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white rounded-[14px] flex items-center justify-center shadow-sm border border-slate-100 group-focus-within:border-[#84CC16]/30 group-focus-within:bg-[#84CC16]/5 transition-all z-10">
-                          <DollarSign className="w-4 h-4 text-slate-400 group-focus-within:text-[#84CC16] transition-colors" />
+
+                {/* SKU */}
+                <FormField
+                  control={
+                    form.control as unknown as Control<CreateInventoryInput>
+                  }
+                  name="sku"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-white mb-2 block ml-1">
+                        SKU
+                      </FormLabel>
+                      <FormControl>
+                        <div className="relative group">
+                          <div className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white dark:bg-slate-800 rounded-[14px] flex items-center justify-center shadow-sm border border-slate-100 dark:border-slate-700 group-focus-within:border-[#84CC16]/30 group-focus-within:bg-[#84CC16]/5 transition-all z-10">
+                            <Tag className="w-4 h-4 text-slate-400 group-focus-within:text-[#84CC16] transition-colors" />
+                          </div>
+                          <Input
+                            placeholder="IPX-001"
+                            className="pl-14 pr-4 bg-slate-50/80 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-[20px] h-[56px] font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:bg-white dark:focus-visible:bg-slate-950 focus-visible:ring-4 focus-visible:ring-[#84CC16]/15 focus-visible:border-[#84CC16] transition-all shadow-sm"
+                            {...field}
+                          />
                         </div>
-                        <Input
-                          type="number"
-                          placeholder="0.00"
-                          className="pl-14 pr-4 bg-slate-50/80 border-slate-200 hover:border-slate-300 hover:bg-slate-50 rounded-[20px] h-[56px] font-bold text-slate-900 placeholder:text-slate-400 focus-visible:bg-white focus-visible:ring-4 focus-visible:ring-[#84CC16]/15 focus-visible:border-[#84CC16] transition-all shadow-sm"
-                          {...field}
-                        />
-                      </div>
-                    </FormControl>
-                    <FormMessage className="text-[10px] uppercase tracking-wider font-bold" />
-                  </FormItem>
-                )}
-              />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Brand */}
+                <FormField
+                  control={
+                    form.control as unknown as Control<CreateInventoryInput>
+                  }
+                  name="brand"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-white mb-2 block ml-1">
+                        Brand
+                      </FormLabel>
+                      <FormControl>
+                        <div className="relative group">
+                          <div className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white dark:bg-slate-800 rounded-[14px] flex items-center justify-center shadow-sm border border-slate-100 dark:border-slate-700 group-focus-within:border-[#84CC16]/30 group-focus-within:bg-[#84CC16]/5 transition-all z-10">
+                            <Package className="w-4 h-4 text-slate-400 group-focus-within:text-[#84CC16] transition-colors" />
+                          </div>
+                          <Input
+                            placeholder="Apple"
+                            className="pl-14 pr-4 bg-slate-50/80 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-[20px] h-[56px] font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:bg-white dark:focus-visible:bg-slate-950 focus-visible:ring-4 focus-visible:ring-[#84CC16]/15 focus-visible:border-[#84CC16] transition-all shadow-sm"
+                            {...field}
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
             </div>
 
-            {/* Image Upload */}
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5 block">
-                Product Image
-              </label>
-              <div
-                className="relative border-2 border-dashed border-slate-200 rounded-[24px] p-4 cursor-pointer hover:border-[#84CC16] hover:bg-[#84CC16]/5 transition-all flex flex-col items-center justify-center gap-3 h-[154px] group overflow-hidden bg-slate-50/50"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                {imagePreview ? (
-                  <div className="relative w-full h-full rounded-[16px] overflow-hidden shadow-sm">
-                    <NextImage
-                      src={imagePreview}
-                      alt="Preview"
-                      fill
-                      className="object-cover"
-                    />
-                    <div className="absolute inset-0 bg-slate-900/10 group-hover:bg-slate-900/20 transition-colors" />
-                    <button
-                      type="button"
-                      className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm text-slate-900 rounded-full p-1.5 hover:bg-white hover:text-red-500 transition-all shadow-md transform hover:scale-110"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setImagePreview(null);
-                        form.setValue("image", undefined);
-                        if (fileInputRef.current)
-                          fileInputRef.current.value = "";
-                      }}
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <div className="w-12 h-12 rounded-2xl bg-white shadow-sm border border-slate-100 flex items-center justify-center text-slate-400 group-hover:text-[#84CC16] group-hover:scale-110 transition-all duration-300">
-                      <Upload className="w-5 h-5" />
-                    </div>
-                    <div className="text-center">
-                      <span className="block text-[11px] font-black text-slate-700 uppercase tracking-wider mb-1">
-                        Click to Upload
-                      </span>
-                      <span className="block text-[10px] font-semibold text-slate-400">
-                        PNG, JPG up to 5MB
-                      </span>
-                    </div>
-                  </>
+            {/* Section: Technical Specifications */}
+            <div className="space-y-6">
+              <div className="border-b border-slate-100 pb-3">
+                <h4 className="text-xs font-black uppercase tracking-[0.2em] text-slate-900 mb-1 flex items-center gap-2 dark:text-white ">
+                  <Maximize2 className="w-3.5 h-3.5 text-[#84CC16]" />
+                  Technical Specs
+                </h4>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider dark:text-white ">
+                  Hardware and configuration
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                {/* Color */}
+                <FormField
+                  control={
+                    form.control as unknown as Control<CreateInventoryInput>
+                  }
+                  name="color"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-white mb-2 block ml-1">
+                        Color
+                      </FormLabel>
+                      <FormControl>
+                        <div className="relative group">
+                          <div className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white dark:bg-slate-800 rounded-[14px] flex items-center justify-center shadow-sm border border-slate-100 dark:border-slate-700 group-focus-within:border-[#84CC16]/30 group-focus-within:bg-[#84CC16]/5 transition-all z-10">
+                            <Palette className="w-4 h-4 text-slate-400 group-focus-within:text-[#84CC16] transition-colors" />
+                          </div>
+                          <Input
+                            placeholder="Space Gray"
+                            className="pl-14 pr-4 bg-slate-50/80 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-[20px] h-[56px] font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:bg-white dark:focus-visible:bg-slate-950 focus-visible:ring-4 focus-visible:ring-[#84CC16]/15 focus-visible:border-[#84CC16] transition-all shadow-sm"
+                            {...field}
+                          />
+                        </div>
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                {/* Storage */}
+                <FormField
+                  control={
+                    form.control as unknown as Control<CreateInventoryInput>
+                  }
+                  name="storage"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-white mb-2 block ml-1">
+                        Storage
+                      </FormLabel>
+                      <FormControl>
+                        <div className="relative group">
+                          <div className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white dark:bg-slate-800 rounded-[14px] flex items-center justify-center shadow-sm border border-slate-100 dark:border-slate-700 group-focus-within:border-[#84CC16]/30 group-focus-within:bg-[#84CC16]/5 transition-all z-10">
+                            <HardDrive className="w-4 h-4 text-slate-400 group-focus-within:text-[#84CC16] transition-colors" />
+                          </div>
+                          <Input
+                            placeholder="64GB"
+                            className="pl-14 pr-4 bg-slate-50/80 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-[20px] h-[56px] font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:bg-white dark:focus-visible:bg-slate-950 focus-visible:ring-4 focus-visible:ring-[#84CC16]/15 focus-visible:border-[#84CC16] transition-all shadow-sm"
+                            {...field}
+                          />
+                        </div>
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                {/* Size */}
+                <FormField
+                  control={
+                    form.control as unknown as Control<CreateInventoryInput>
+                  }
+                  name="size"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-white mb-2 block ml-1">
+                        Screen Size
+                      </FormLabel>
+                      <FormControl>
+                        <div className="relative group">
+                          <div className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white dark:bg-slate-800 rounded-[14px] flex items-center justify-center shadow-sm border border-slate-100 dark:border-slate-700 group-focus-within:border-[#84CC16]/30 group-focus-within:bg-[#84CC16]/5 transition-all z-10">
+                            <Maximize2 className="w-4 h-4 text-slate-400 group-focus-within:text-[#84CC16] transition-colors" />
+                          </div>
+                          <Input
+                            placeholder="5.8"
+                            className="pl-14 pr-4 bg-slate-50/80 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-[20px] h-[56px] font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:bg-white dark:focus-visible:bg-slate-950 focus-visible:ring-4 focus-visible:ring-[#84CC16]/15 focus-visible:border-[#84CC16] transition-all shadow-sm"
+                            {...field}
+                          />
+                        </div>
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                {/* Model Number */}
+                <FormField
+                  control={
+                    form.control as unknown as Control<CreateInventoryInput>
+                  }
+                  name="modelNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-white mb-2 block ml-1">
+                        Model Number
+                      </FormLabel>
+                      <FormControl>
+                        <div className="relative group">
+                          <div className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white dark:bg-slate-800 rounded-[14px] flex items-center justify-center shadow-sm border border-slate-100 dark:border-slate-700 group-focus-within:border-[#84CC16]/30 group-focus-within:bg-[#84CC16]/5 transition-all z-10">
+                            <Hash className="w-4 h-4 text-slate-400 group-focus-within:text-[#84CC16] transition-colors" />
+                          </div>
+                          <Input
+                            placeholder="A1901"
+                            className="pl-14 pr-4 bg-slate-50/80 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-[20px] h-[56px] font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:bg-white dark:focus-visible:bg-slate-950 focus-visible:ring-4 focus-visible:ring-[#84CC16]/15 focus-visible:border-[#84CC16] transition-all shadow-sm"
+                            {...field}
+                          />
+                        </div>
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                {/* IMEI Number */}
+                <FormField
+                  control={
+                    form.control as unknown as Control<CreateInventoryInput>
+                  }
+                  name="imeiNumber"
+                  render={({ field }) => (
+                    <FormItem className="col-span-2">
+                      <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-white mb-2 block ml-1">
+                        IMEI / Serial Number
+                      </FormLabel>
+                      <FormControl>
+                        <div className="relative group">
+                          <div className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white dark:bg-slate-800 rounded-[14px] flex items-center justify-center shadow-sm border border-slate-100 dark:border-slate-700 group-focus-within:border-[#84CC16]/30 group-focus-within:bg-[#84CC16]/5 transition-all z-10">
+                            <Barcode className="w-4 h-4 text-slate-400 group-focus-within:text-[#84CC16] transition-colors" />
+                          </div>
+                          <Input
+                            placeholder="123456789012345"
+                            className="pl-14 pr-4 bg-slate-50/80 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-[20px] h-[56px] font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:bg-white dark:focus-visible:bg-slate-950 focus-visible:ring-4 focus-visible:ring-[#84CC16]/15 focus-visible:border-[#84CC16] transition-all shadow-sm"
+                            {...field}
+                          />
+                        </div>
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: Pricing, Inventory & Meta */}
+          <div className="space-y-10">
+            {/* Section: Pricing & Stock */}
+            <div className="space-y-6">
+              <div className="border-b border-slate-100 pb-3">
+                <h4 className="text-xs font-black uppercase tracking-[0.2em] text-slate-900 mb-1 flex items-center gap-2 dark:text-white ">
+                  <DollarSign className="w-3.5 h-3.5 text-[#84CC16]" />
+                  Pricing & Stock
+                </h4>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider dark:text-white ">
+                  Financials and quantity levels
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                {/* Cost Price */}
+                <FormField
+                  control={
+                    form.control as unknown as Control<CreateInventoryInput>
+                  }
+                  name="purchasePrice"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-white mb-2 block ml-1 ">
+                        Cost Price ($)
+                      </FormLabel>
+                      <FormControl>
+                        <div className="relative group">
+                          <div className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white dark:bg-slate-800 rounded-[14px] flex items-center justify-center shadow-sm border border-slate-100 dark:border-slate-700 group-focus-within:border-[#84CC16]/30 group-focus-within:bg-[#84CC16]/5 transition-all z-10">
+                            <DollarSign className="w-4 h-4 text-slate-400 group-focus-within:text-[#84CC16] transition-colors" />
+                          </div>
+                          <Input
+                            type="number"
+                            placeholder="200"
+                            className="pl-14 pr-4 bg-slate-50/80 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-[20px] h-[56px] font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:bg-white dark:focus-visible:bg-slate-950 focus-visible:ring-4 focus-visible:ring-[#84CC16]/15 focus-visible:border-[#84CC16] transition-all shadow-sm"
+                            {...field}
+                          />
+                        </div>
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                {/* Selling Price */}
+                <FormField
+                  control={
+                    form.control as unknown as Control<CreateInventoryInput>
+                  }
+                  name="expectedPrice"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-white mb-2 block ml-1">
+                        Expected Price ($)
+                      </FormLabel>
+                      <FormControl>
+                        <div className="relative group">
+                          <div className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white dark:bg-slate-800 rounded-[14px] flex items-center justify-center shadow-sm border border-slate-100 dark:border-slate-700 group-focus-within:border-[#84CC16]/30 group-focus-within:bg-[#84CC16]/5 transition-all z-10">
+                            <DollarSign className="w-4 h-4 text-slate-400 group-focus-within:text-[#84CC16] transition-colors" />
+                          </div>
+                          <Input
+                            type="number"
+                            placeholder="300"
+                            className="pl-14 pr-4 bg-slate-50/80 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-[20px] h-[56px] font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:bg-white dark:focus-visible:bg-slate-950 focus-visible:ring-4 focus-visible:ring-[#84CC16]/15 focus-visible:border-[#84CC16] transition-all shadow-sm"
+                            {...field}
+                          />
+                        </div>
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                {/* Quantity */}
+                <FormField
+                  control={
+                    form.control as unknown as Control<CreateInventoryInput>
+                  }
+                  name="quantity"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-white mb-2 block ml-1">
+                        Quantity
+                      </FormLabel>
+                      <FormControl>
+                        <div className="relative group">
+                          <div className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white dark:bg-slate-800 rounded-[14px] flex items-center justify-center shadow-sm border border-slate-100 dark:border-slate-700 group-focus-within:border-[#84CC16]/30 group-focus-within:bg-[#84CC16]/5 transition-all z-10">
+                            <Layers className="w-4 h-4 text-slate-400 group-focus-within:text-[#84CC16] transition-colors" />
+                          </div>
+                          <Input
+                            type="number"
+                            placeholder="1"
+                            className="pl-14 pr-4 bg-slate-50/80 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-[20px] h-[56px] font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:bg-white dark:focus-visible:bg-slate-950 focus-visible:ring-4 focus-visible:ring-[#84CC16]/15 focus-visible:border-[#84CC16] transition-all shadow-sm"
+                            {...field}
+                          />
+                        </div>
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                {/* Min Stock Level */}
+                <FormField
+                  control={
+                    form.control as unknown as Control<CreateInventoryInput>
+                  }
+                  name="minStockLevel"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-white mb-2 block ml-1 ">
+                        Min Stock Level
+                      </FormLabel>
+                      <FormControl>
+                        <div className="relative group">
+                          <div className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white dark:bg-slate-800 rounded-[14px] flex items-center justify-center shadow-sm border border-slate-100 dark:border-slate-700 group-focus-within:border-[#84CC16]/30 group-focus-within:bg-[#84CC16]/5 transition-all z-10">
+                            <AlertTriangle className="w-4 h-4 text-slate-400 group-focus-within:text-[#84CC16] transition-colors" />
+                          </div>
+                          <Input
+                            type="number"
+                            placeholder="2"
+                            className="pl-14 pr-4 bg-slate-50/80 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-[20px] h-[56px] font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:bg-white dark:focus-visible:bg-slate-950 focus-visible:ring-4 focus-visible:ring-[#84CC16]/15 focus-visible:border-[#84CC16] transition-all shadow-sm"
+                            {...field}
+                          />
+                        </div>
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+
+            {/* Section: Management Metadata */}
+            <div className="space-y-6">
+              <div className="border-b border-slate-100 pb-3">
+                <h4 className="text-xs font-black uppercase tracking-[0.2em] text-slate-900 mb-1 flex items-center gap-2 dark:text-white ">
+                  <Settings className="w-3.5 h-3.5 text-[#84CC16]" />
+                  Management & Status
+                </h4>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  Organization and lifecycle
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                {/* Supplier ID */}
+                <FormField
+                  control={
+                    form.control as unknown as Control<CreateInventoryInput>
+                  }
+                  name="supplierId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-white mb-2 block ml-1">
+                        Supplier ID
+                      </FormLabel>
+                      <FormControl>
+                        <div className="relative group">
+                          <div className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white dark:bg-slate-800 rounded-[14px] flex items-center justify-center shadow-sm border border-slate-100 dark:border-slate-700 group-focus-within:border-[#84CC16]/30 group-focus-within:bg-[#84CC16]/5 transition-all z-10">
+                            <Users className="w-4 h-4 text-slate-400 group-focus-within:text-[#84CC16] transition-colors" />
+                          </div>
+                          <Input
+                            placeholder="Supplier..."
+                            className="pl-14 pr-4 bg-slate-50/80 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-[20px] h-[56px] font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:bg-white dark:focus-visible:bg-slate-950 focus-visible:ring-4 focus-visible:ring-[#84CC16]/15 focus-visible:border-[#84CC16] transition-all shadow-sm"
+                            {...field}
+                          />
+                        </div>
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                {/* Store ID */}
+                <FormField
+                  control={
+                    form.control as unknown as Control<CreateInventoryInput>
+                  }
+                  name="storeId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-white mb-2 block ml-1">
+                        Store ID
+                      </FormLabel>
+                      <FormControl>
+                        <div className="relative group">
+                          <div className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white dark:bg-slate-800 rounded-[14px] flex items-center justify-center shadow-sm border border-slate-100 dark:border-slate-700 group-focus-within:border-[#84CC16]/30 group-focus-within:bg-[#84CC16]/5 transition-all z-10">
+                            <Store className="w-4 h-4 text-slate-400 group-focus-within:text-[#84CC16] transition-colors" />
+                          </div>
+                          <Input
+                            placeholder="Store..."
+                            className="pl-14 pr-4 bg-slate-50/80 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-[20px] h-[56px] font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:bg-white dark:focus-visible:bg-slate-950 focus-visible:ring-4 focus-visible:ring-[#84CC16]/15 focus-visible:border-[#84CC16] transition-all shadow-sm"
+                            {...field}
+                          />
+                        </div>
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                {/* Group Key */}
+                <FormField
+                  control={
+                    form.control as unknown as Control<CreateInventoryInput>
+                  }
+                  name="groupKey"
+                  render={({ field }) => (
+                    <FormItem className="col-span-2">
+                      <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-white mb-2 block ml-1">
+                        Batch / Group Key
+                      </FormLabel>
+                      <FormControl>
+                        <div className="relative group">
+                          <div className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white dark:bg-slate-800 rounded-[14px] flex items-center justify-center shadow-sm border border-slate-100 dark:border-slate-700 group-focus-within:border-[#84CC16]/30 group-focus-within:bg-[#84CC16]/5 transition-all z-10">
+                            <Layers className="w-4 h-4 text-slate-400 group-focus-within:text-[#84CC16] transition-colors" />
+                          </div>
+                          <Input
+                            placeholder="e.g. iphone-x-batch-1"
+                            className="pl-14 pr-4 bg-slate-50/80 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-[20px] h-[56px] font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:bg-white dark:focus-visible:bg-slate-950 focus-visible:ring-4 focus-visible:ring-[#84CC16]/15 focus-visible:border-[#84CC16] transition-all shadow-sm"
+                            {...field}
+                          />
+                        </div>
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                {/* Condition */}
+                <FormField
+                  control={
+                    form.control as unknown as Control<CreateInventoryInput>
+                  }
+                  name="currentState"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-white mb-2 block ml-1">
+                        Condition
+                      </FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="group bg-slate-50/80 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-[20px] h-[56px] font-bold text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-950 focus:ring-4 focus:ring-[#84CC16]/15 focus:border-[#84CC16] transition-all shadow-sm px-2">
+                            <div className="flex items-center gap-3 w-full">
+                              <div className="w-10 h-10 rounded-[14px] flex items-center justify-center shadow-sm border border-slate-100 group-focus:border-[#84CC16]/30 group-focus:bg-[#84CC16]/5 transition-all shrink-0">
+                                <Activity className="w-4 h-4 text-slate-400 group-focus:text-[#84CC16] transition-colors" />
+                              </div>
+                              <SelectValue placeholder="Condition" />
+                            </div>
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent className="rounded-2xl border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl p-1">
+                          <SelectItem
+                            value="new"
+                            className="font-bold rounded-xl focus:bg-[#84CC16]/10 focus:text-[#84CC16] cursor-pointer py-3 dark:text-white "
+                          >
+                            Brand New
+                          </SelectItem>
+                          <SelectItem
+                            value="good condition"
+                            className="font-bold rounded-xl focus:bg-[#84CC16]/10 focus:text-[#84CC16] cursor-pointer py-3 dark:text-white "
+                          >
+                            Good Condition
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  )}
+                />
+
+                {/* Type - Hidden if forced */}
+                {!forceType && (
+                  <FormField
+                    control={
+                      form.control as unknown as Control<CreateInventoryInput>
+                    }
+                    name="type"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-white mb-2 block ml-1">
+                          Item Type
+                        </FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                          value={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger className="group bg-slate-50/80 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-[20px] h-[56px] font-bold text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-950 focus:ring-4 focus:ring-[#84CC16]/15 focus:border-[#84CC16] transition-all shadow-sm px-2">
+                              <div className="flex items-center gap-3 w-full">
+                                <div className="w-10 h-10   rounded-[14px] flex items-center justify-center shadow-sm border border-slate-100 group-focus:border-[#84CC16]/30 group-focus:bg-[#84CC16]/5 transition-all shrink-0 dark:text-white ">
+                                  <Tag className="w-4 h-4 text-slate-400 group-focus:text-[#84CC16] transition-colors" />
+                                </div>
+                                <SelectValue
+                                  placeholder="Type"
+                                  className="dark:text-white "
+                                />
+                              </div>
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent className="rounded-2xl border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl p-1">
+                            <SelectItem
+                              value="inventory"
+                              className="font-bold rounded-xl focus:bg-[#84CC16]/10 focus:text-[#84CC16] cursor-pointer py-3 dark:text-white"
+                            >
+                              Inventory
+                            </SelectItem>
+                            <SelectItem
+                              value="sold"
+                              className="font-bold rounded-xl focus:bg-[#84CC16]/10 focus:text-[#84CC16] cursor-pointer py-3 dark:text-white"
+                            >
+                              Sold
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </FormItem>
+                    )}
+                  />
                 )}
               </div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleImageChange}
-              />
             </div>
           </div>
         </div>
 
-        <div className="flex items-center justify-between pt-6 border-t border-slate-100">
-          <p className="text-[11px] font-semibold text-slate-400 hidden sm:block">
-            Please ensure all <span className="text-red-400">*</span> fields are
-            filled correctly.
+        {/* Section: Rich Details & Descriptions */}
+        <div className="space-y-6 pt-6 border-t border-slate-100">
+          <div className="border-b border-slate-100 pb-3">
+            <h4 className="text-xs font-black uppercase tracking-[0.2em] text-slate-900 mb-1 dark:text-white  flex items-center gap-2">
+              <FileText className="w-3.5 h-3.5 text-[#84CC16]" />
+              Descriptions & Details
+            </h4>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+              Additional notes and AI-generated content
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
+            <FormField
+              control={form.control}
+              name="productDetails"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-white mb-2 block ml-1">
+                    Product Details
+                  </FormLabel>
+                  <FormControl>
+                    <textarea
+                      placeholder="e.g. Used phone, good condition..."
+                      className="w-full min-h-[120px] p-4 bg-slate-50/80 border border-slate-200 hover:border-slate-300 hover:bg-slate-50 rounded-[20px] font-bold text-slate-900 placeholder:text-slate-400 focus:bg-white focus:ring-4 focus:ring-[#84CC16]/15 focus:border-[#84CC16] transition-all shadow-sm outline-none resize-none"
+                      {...field}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            {/* <FormField
+              control={form.control}
+              name="aiDescription"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-white mb-2 block ml-1">
+                    AI Description
+                  </FormLabel>
+                  <FormControl>
+                    <textarea
+                      placeholder="AI-generated description will appear here..."
+                      className="w-full min-h-[120px] p-4 bg-[#84CC16]/5 border border-[#84CC16]/20 hover:border-[#84CC16]/40 hover:bg-[#84CC16]/10 rounded-[20px] font-bold text-slate-900 placeholder:text-slate-400 focus:bg-white focus:ring-4 focus:ring-[#84CC16]/15 focus:border-[#84CC16] transition-all shadow-sm outline-none resize-none"
+                      {...field}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            /> */}
+          </div>
+        </div>
+
+        {/* Section: Image Upload */}
+        <div className="space-y-6 pt-6 border-t border-slate-100">
+          <div className="border-b border-slate-100 pb-3">
+            <h4 className="text-xs font-black uppercase tracking-[0.2em] text-slate-900 mb-1 dark:text-white  flex items-center gap-2">
+              <Camera className="w-3.5 h-3.5 text-[#84CC16]" />
+              Product Media
+            </h4>
+          </div>
+
+          <div
+            className="relative border-2 border-dashed border-slate-200 rounded-[32px] p-8 cursor-pointer hover:border-[#84CC16] hover:bg-[#84CC16]/5 transition-all flex flex-col items-center justify-center gap-4 min-h-[200px] group overflow-hidden bg-slate-50/50"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            {imagePreview ? (
+              <div className="relative w-full max-w-md h-48 rounded-[24px] overflow-hidden shadow-2xl">
+                <NextImage
+                  src={imagePreview}
+                  alt="Preview"
+                  fill
+                  className="object-cover"
+                />
+                <div className="absolute inset-0 bg-slate-900/10 group-hover:bg-slate-900/20 transition-colors" />
+                <button
+                  type="button"
+                  className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm text-slate-900 rounded-full p-2 hover:bg-white hover:text-red-500 transition-all shadow-md transform hover:scale-110"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setImagePreview(null);
+                    form.setValue("image", undefined);
+                    if (fileInputRef.current) fileInputRef.current.value = "";
+                  }}
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="w-16 h-16 rounded-[24px] bg-white shadow-xl shadow-slate-200/50 border border-slate-100 flex items-center justify-center text-slate-400 group-hover:text-[#84CC16] group-hover:scale-110 transition-all duration-300">
+                  <Upload className="w-6 h-6" />
+                </div>
+                <div className="text-center">
+                  <span className="block text-sm font-black text-slate-700 uppercase tracking-widest mb-1">
+                    Click to Upload
+                  </span>
+                  <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    PNG, JPG or WEBP up to 5MB
+                  </span>
+                </div>
+              </>
+            )}
+          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleImageChange}
+          />
+        </div>
+
+        <div className="flex items-center justify-between pt-10 border-t border-slate-100">
+          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 hidden sm:flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-[#84CC16]" />
+            Required fields are marked with{" "}
+            <span className="text-red-500">*</span>
           </p>
-          <div className="flex justify-end gap-3 w-full sm:w-auto">
+          <div className="flex justify-end gap-4 w-full sm:w-auto">
             <Button
               type="button"
               variant="ghost"
               onClick={onClose}
-              className="rounded-2xl px-8 h-14 font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 hover:bg-slate-100 w-full sm:w-auto"
+              className="rounded-2xl px-10 h-14 font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 hover:bg-slate-100 w-full sm:w-auto transition-all"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={isPending}
-              className="bg-slate-900 hover:bg-slate-800 text-white rounded-2xl px-10 h-14 font-black uppercase tracking-widest shadow-xl shadow-slate-900/10 active:scale-95 transition-all w-full sm:w-auto"
+              className="bg-slate-900 hover:bg-slate-800 text-white rounded-2xl px-12 h-14 font-black uppercase tracking-widest shadow-2xl shadow-slate-900/20 active:scale-[0.98] transition-all w-full sm:w-auto flex items-center gap-3"
             >
               {isPending ? (
-                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                <Loader2 className="w-5 h-5 animate-spin" />
               ) : (
-                <Smartphone className="w-4 h-4 mr-2" />
+                <Smartphone className="w-4 h-4" />
               )}
-              {isEditMode ? "Save Details" : "Add Device"}
+              {isPending
+                ? "Saving..."
+                : isEditMode
+                  ? "Save Details"
+                  : "Add to Inventory"}
             </Button>
           </div>
         </div>
@@ -683,7 +1155,7 @@ export function InventoryFormModal({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-3xl bg-white rounded-[32px] border border-slate-100 shadow-2xl p-0 overflow-hidden max-h-[95vh] flex flex-col">
+        <DialogContent className="max-w-[95vw] lg:max-w-[1400px] bg-white dark:bg-slate-950 rounded-[32px] border border-slate-100 dark:border-slate-800 shadow-2xl p-0 overflow-hidden max-h-[95vh] flex flex-col">
           <div className="relative bg-slate-900 p-8 text-white shrink-0 overflow-hidden">
             {/* Decorative shapes */}
             <div className="absolute top-0 right-0 w-64 h-64 bg-[#84CC16] rounded-full mix-blend-multiply filter blur-[80px] opacity-20 -translate-y-1/2 translate-x-1/2" />
@@ -715,35 +1187,37 @@ export function InventoryFormModal({
             </DialogHeader>
           </div>
 
-          <div className="p-8 bg-white overflow-y-auto flex-1 custom-scrollbar">
+          <div className="p-8 lg:p-12 bg-white dark:bg-slate-950 overflow-y-auto flex-1 custom-scrollbar">
             {!isEditMode ? (
               <Tabs defaultValue="single" className="w-full">
-                <TabsList className="grid w-full max-w-lg grid-cols-3 bg-slate-100/70 p-1.5 h-[56px] rounded-[20px] mb-8 mx-auto relative z-10">
-                  <TabsTrigger
-                    value="single"
-                    className="rounded-[14px] font-bold uppercase tracking-wider text-[11px] h-full data-[state=active]:bg-white data-[state=active]:text-[#84CC16] data-[state=active]:shadow-sm transition-all"
-                  >
-                    <Smartphone className="w-4 h-4 mr-2" />
-                    <span className="hidden sm:inline">Manual Entry</span>
-                    <span className="sm:hidden">Manual</span>
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="barcode"
-                    className="rounded-[14px] font-bold uppercase tracking-wider text-[11px] h-full data-[state=active]:bg-white data-[state=active]:text-[#84CC16] data-[state=active]:shadow-sm transition-all"
-                  >
-                    <Barcode className="w-4 h-4 mr-2" />
-                    <span className="hidden sm:inline">Scan Barcode</span>
-                    <span className="sm:hidden">Scan</span>
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="upload"
-                    className="rounded-[14px] font-bold uppercase tracking-wider text-[11px] h-full data-[state=active]:bg-white data-[state=active]:text-[#84CC16] data-[state=active]:shadow-sm transition-all"
-                  >
-                    <FileUp className="w-4 h-4 mr-2" />
-                    <span className="hidden sm:inline">File Upload</span>
-                    <span className="sm:hidden">Upload</span>
-                  </TabsTrigger>
-                </TabsList>
+                {forceType !== "sold" && (
+                  <TabsList className="grid w-full max-w-lg grid-cols-3 bg-slate-100/70 dark:bg-slate-900/50 p-1.5 h-[56px] rounded-[20px] mb-8 mx-auto relative z-10">
+                    <TabsTrigger
+                      value="single"
+                      className="rounded-[14px] font-bold uppercase tracking-wider text-[11px] h-full data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-[#84CC16] data-[state=active]:shadow-sm transition-all"
+                    >
+                      <Smartphone className="w-4 h-4 mr-2" />
+                      <span className="hidden sm:inline">Manual Entry</span>
+                      <span className="sm:hidden">Manual</span>
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="barcode"
+                      className="rounded-[14px] font-bold uppercase tracking-wider text-[11px] h-full data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-[#84CC16] data-[state=active]:shadow-sm transition-all"
+                    >
+                      <Barcode className="w-4 h-4 mr-2" />
+                      <span className="hidden sm:inline">Scan Barcode</span>
+                      <span className="sm:hidden">Scan</span>
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="upload"
+                      className="rounded-[14px] font-bold uppercase tracking-wider text-[11px] h-full data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-[#84CC16] data-[state=active]:shadow-sm transition-all"
+                    >
+                      <FileUp className="w-4 h-4 mr-2" />
+                      <span className="hidden sm:inline">File Upload</span>
+                      <span className="sm:hidden">Upload</span>
+                    </TabsTrigger>
+                  </TabsList>
+                )}
 
                 <TabsContent
                   value="single"
@@ -752,245 +1226,290 @@ export function InventoryFormModal({
                   {renderFormContent()}
                 </TabsContent>
 
-                <TabsContent
-                  value="barcode"
-                  className="mt-0 border-none p-0 outline-none focus-visible:ring-0"
-                >
-                  <div className="flex flex-col items-center justify-center py-16 border-2 border-dashed border-slate-200 rounded-[32px] bg-slate-50/50 relative overflow-hidden min-h-[400px]">
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-[#84CC16]/5 rounded-full blur-[80px] pointer-events-none" />
+                {forceType !== "sold" && (
+                  <TabsContent
+                    value="barcode"
+                    className="mt-0 border-none p-0 outline-none focus-visible:ring-0"
+                  >
+                    <div className="flex flex-col items-center justify-center py-16 border-2 border-dashed border-slate-200 rounded-[32px] bg-slate-50/50 relative overflow-hidden min-h-[400px]">
+                      {/* ... rest of barcode content ... */}
+                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-[#84CC16]/5 rounded-full blur-[80px] pointer-events-none" />
 
-                    {!isCameraActive ? (
-                      <>
-                        {barcodeImagePreview ? (
-                          <div className="relative w-64 h-48 rounded-[24px] overflow-hidden shadow-2xl mb-8 z-10 border-4 border-white group">
-                            <NextImage
-                              src={barcodeImagePreview}
-                              alt="Barcode Preview"
-                              fill
-                              className="object-cover transition-transform duration-500 group-hover:scale-110"
-                            />
-                            <div className="absolute inset-0 bg-slate-900/20 group-hover:bg-slate-900/40 transition-colors" />
-                            <button
-                              type="button"
-                              onClick={() => setBarcodeImagePreview(null)}
-                              className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm text-slate-900 rounded-full p-1.5 hover:bg-white hover:text-red-500 transition-all shadow-md z-20"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
-                            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-[#84CC16] text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg animate-pulse z-20 whitespace-nowrap">
-                              Scanning...
+                      {!isCameraActive ? (
+                        <>
+                          {barcodeImagePreview ? (
+                            <div className="relative w-64 h-48 rounded-[24px] overflow-hidden shadow-2xl mb-8 z-10 border-4 border-white group">
+                              <NextImage
+                                src={barcodeImagePreview}
+                                alt="Barcode Preview"
+                                fill
+                                className="object-cover transition-transform duration-500 group-hover:scale-110"
+                              />
+                              <div className="absolute inset-0 bg-slate-900/20 group-hover:bg-slate-900/40 transition-colors" />
+                              <button
+                                type="button"
+                                onClick={() => setBarcodeImagePreview(null)}
+                                className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm text-slate-900 rounded-full p-1.5 hover:bg-white hover:text-red-500 transition-all shadow-md z-20"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-[#84CC16] text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg animate-pulse z-20 whitespace-nowrap">
+                                Scanning...
+                              </div>
                             </div>
-                          </div>
-                        ) : (
-                          <div className="relative w-24 h-24 rounded-[28px] bg-white shadow-xl shadow-slate-200/50 flex items-center justify-center mb-8 border border-slate-100 z-10">
-                            <Barcode className="w-10 h-10 text-[#84CC16]" />
-                            <div className="absolute inset-0 border-2 border-[#84CC16] rounded-[28px] opacity-0 animate-[ping_2s_cubic-bezier(0,0,0.2,1)_infinite]" />
-                          </div>
-                        )}
-
-                        <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 mb-3 z-10">
-                          {barcodeImagePreview
-                            ? "Analyzing Image"
-                            : "Scan Barcode"}
-                        </h3>
-                        <p className="text-slate-500 font-medium text-center max-w-[320px] text-sm leading-relaxed mb-8 z-10">
-                          {barcodeImagePreview
-                            ? "Please wait while we extract the barcode data from your uploaded photo."
-                            : "Choose to scan via live camera or upload a photo, or enter it manually below."}
-                        </p>
-
-                        {/* Manual Barcode Input */}
-                        <div className="w-full max-w-sm mb-8 z-10 px-4">
-                          <div className="relative group">
-                            <div className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white rounded-[14px] flex items-center justify-center shadow-sm border border-slate-100 group-focus-within:border-[#84CC16]/30 group-focus-within:bg-[#84CC16]/5 transition-all z-10">
-                              <Hash className="w-4 h-4 text-slate-400 group-focus-within:text-[#84CC16] transition-colors" />
+                          ) : (
+                            <div className="relative w-24 h-24 rounded-[28px] bg-white shadow-xl shadow-slate-200/50 flex items-center justify-center mb-8 border border-slate-100 z-10">
+                              <Barcode className="w-10 h-10 text-[#84CC16]" />
+                              <div className="absolute inset-0 border-2 border-[#84CC16] rounded-[28px] opacity-0 animate-[ping_2s_cubic-bezier(0,0,0.2,1)_infinite]" />
                             </div>
-                            <input
-                              type="text"
-                              placeholder="Type barcode or IMEI..."
-                              value={manualBarcode}
-                              onChange={(e) => setManualBarcode(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                  e.preventDefault();
-                                  handleManualBarcodeSubmit();
+                          )}
+
+                          <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 mb-3 z-10">
+                            {barcodeImagePreview
+                              ? "Analyzing Image"
+                              : "Scan Barcode"}
+                          </h3>
+                          <p className="text-slate-500 font-medium text-center max-w-[320px] text-sm leading-relaxed mb-8 z-10 dark:text-white ">
+                            {barcodeImagePreview
+                              ? "Please wait while we extract the barcode data from your uploaded photo."
+                              : "Choose to scan via live camera or upload a photo, or enter it manually below."}
+                          </p>
+
+                          {/* Manual Barcode Input */}
+                          <div className="w-full max-w-sm mb-6 z-10 px-4">
+                            <div className="relative group">
+                              <div className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white dark:bg-slate-800 rounded-[14px] flex items-center justify-center shadow-sm border border-slate-100 dark:border-slate-700 group-focus-within:border-[#84CC16]/30 group-focus-within:bg-[#84CC16]/5 transition-all z-10">
+                                <Hash className="w-4 h-4 text-slate-400 group-focus-within:text-[#84CC16] transition-colors" />
+                              </div>
+                              <input
+                                type="text"
+                                placeholder="Type barcode or IMEI..."
+                                className="w-full pl-14 pr-14 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 rounded-[20px] h-[56px] font-bold text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:bg-white dark:focus-visible:bg-slate-950 focus-visible:ring-4 focus-visible:ring-[#84CC16]/15 focus-visible:border-[#84CC16] outline-none transition-all shadow-sm"
+                                value={manualBarcode}
+                                onChange={(e) =>
+                                  setManualBarcode(e.target.value)
                                 }
-                              }}
-                              className="w-full pl-14 pr-14 bg-white border border-slate-200 hover:border-slate-300 rounded-[20px] h-[56px] font-bold text-slate-900 placeholder:text-slate-400 focus-visible:ring-4 focus-visible:ring-[#84CC16]/15 focus-visible:border-[#84CC16] outline-none transition-all shadow-sm"
-                            />
-                            <button
-                              type="button"
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    handleManualBarcodeSubmit();
+                                  }
+                                }}
+                              />
+                              <button
+                                type="button"
+                                onClick={handleManualBarcodeSubmit}
+                                disabled={
+                                  isCreatingFromBarcode || !manualBarcode.trim()
+                                }
+                                className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-slate-900 text-white rounded-[14px] flex items-center justify-center hover:bg-slate-800 disabled:bg-slate-200 disabled:cursor-not-allowed transition-all z-10"
+                              >
+                                {isCreatingFromBarcode ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <Plus className="w-5 h-5" />
+                                )}
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Additional Barcode Data Fields */}
+                          <div className="w-full max-w-sm grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8 z-10 px-4">
+                            <div className="space-y-1.5">
+                              <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1 dark:text-white">
+                                IMEI Number
+                              </label>
+                              <input
+                                type="text"
+                                placeholder="Optional..."
+                                className="w-full px-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl h-[44px] font-bold text-xs outline-none focus:ring-2 focus:ring-[#84CC16]/20 transition-all"
+                                value={barcodeImei}
+                                onChange={(e) => setBarcodeImei(e.target.value)}
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">
+                                Cost Price ($)
+                              </label>
+                              <input
+                                type="number"
+                                placeholder="Optional..."
+                                className="w-full px-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl h-[44px] font-bold text-xs outline-none focus:ring-2 focus:ring-[#84CC16]/20 transition-all"
+                                value={barcodePurchasePrice}
+                                onChange={(e) =>
+                                  setBarcodePurchasePrice(e.target.value)
+                                }
+                              />
+                            </div>
+                            <div className="space-y-1.5 sm:col-span-2">
+                              <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1 dark:text-white">
+                                Condition
+                              </label>
+                              <Select
+                                onValueChange={setBarcodeCondition}
+                                value={barcodeCondition}
+                              >
+                                <SelectTrigger className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl h-[44px] font-bold text-xs">
+                                  <SelectValue placeholder="Select Condition" />
+                                </SelectTrigger>
+                                <SelectContent className="rounded-xl">
+                                  <SelectItem value="new" className="font-bold">
+                                    Brand New
+                                  </SelectItem>
+                                  <SelectItem
+                                    value="good condition"
+                                    className="font-bold"
+                                  >
+                                    Good Condition
+                                  </SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            <div className="sm:col-span-2 space-y-1.5">
+                              <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1 dark:text-white">
+                                Device Photo
+                              </label>
+                              <div
+                                onClick={() =>
+                                  barcodeDeviceImageInputRef.current?.click()
+                                }
+                                className="w-full aspect-[2/1] rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-100/50 dark:hover:bg-slate-900/50 transition-all relative overflow-hidden group"
+                              >
+                                {barcodeDeviceImagePreview ? (
+                                  <NextImage
+                                    src={barcodeDeviceImagePreview}
+                                    alt="Preview"
+                                    fill
+                                    className="object-cover transition-transform group-hover:scale-105"
+                                  />
+                                ) : (
+                                  <>
+                                    <Camera className="w-5 h-5 text-slate-300 mb-1 group-hover:text-[#84CC16] transition-colors" />
+                                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-tighter">
+                                      Upload Device Image
+                                    </span>
+                                  </>
+                                )}
+                                <input
+                                  type="file"
+                                  ref={barcodeDeviceImageInputRef}
+                                  className="hidden"
+                                  accept="image/*"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      setBarcodeDeviceImage(file);
+                                      const reader = new FileReader();
+                                      reader.onloadend = () =>
+                                        setBarcodeDeviceImagePreview(
+                                          reader.result as string,
+                                        );
+                                      reader.readAsDataURL(file);
+                                    }
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between gap-4 z-10 w-full max-w-sm mt-4">
+                            <div className="flex gap-2">
+                              <Button
+                                onClick={startScanning}
+                                type="button"
+                                size="icon"
+                                variant="secondary"
+                                className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-[#84CC16] hover:bg-[#84CC16]/10 transition-all border border-slate-200 dark:border-slate-700 shadow-sm"
+                                title="Live Scan"
+                              >
+                                <Camera className="w-5 h-5" />
+                              </Button>
+                              <Button
+                                onClick={() =>
+                                  barcodeImageInputRef.current?.click()
+                                }
+                                type="button"
+                                size="icon"
+                                variant="secondary"
+                                className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-[#84CC16] hover:bg-[#84CC16]/10 transition-all border border-slate-200 dark:border-slate-700 shadow-sm"
+                                title="Upload Barcode"
+                              >
+                                <Upload className="w-5 h-5" />
+                                <input
+                                  ref={barcodeImageInputRef}
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={handleBarcodeImageUpload}
+                                />
+                              </Button>
+                            </div>
+
+                            <Button
                               onClick={handleManualBarcodeSubmit}
                               disabled={
                                 isCreatingFromBarcode || !manualBarcode.trim()
                               }
-                              className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-slate-900 text-white rounded-[14px] flex items-center justify-center hover:bg-slate-800 disabled:bg-slate-200 disabled:cursor-not-allowed transition-all z-10"
+                              type="button"
+                              className="flex-1 h-14 bg-[#84CC16] hover:bg-[#76b813] text-white rounded-[20px] font-black text-[12px] uppercase tracking-widest shadow-lg shadow-lime-500/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
                             >
                               {isCreatingFromBarcode ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <Loader2 className="w-5 h-5 animate-spin" />
                               ) : (
-                                <Search className="w-4 h-4" />
+                                <>
+                                  <Plus size={18} strokeWidth={3} />
+                                  <span>Add Device</span>
+                                </>
                               )}
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="flex flex-wrap items-center justify-center gap-4 z-10">
-                          <Button
-                            onClick={startScanning}
-                            type="button"
-                            className="px-8 py-6 bg-slate-900 hover:bg-slate-800 text-white rounded-[20px] font-black text-[12px] uppercase tracking-widest shadow-xl shadow-slate-900/20 transition-all active:scale-95 flex items-center gap-3"
-                          >
-                            <Camera className="w-5 h-5" />
-                            Open Camera
-                          </Button>
-                          <div className="relative">
-                            <Button
-                              onClick={() =>
-                                barcodeImageInputRef.current?.click()
-                              }
-                              type="button"
-                              variant="outline"
-                              className="px-8 py-6 border-2 border-slate-200 hover:border-slate-300 hover:bg-white text-slate-900 rounded-[20px] font-black text-[12px] uppercase tracking-widest transition-all active:scale-95 flex items-center gap-3"
-                            >
-                              <Upload className="w-5 h-5" />
-                              Upload Image
                             </Button>
-                            <input
-                              ref={barcodeImageInputRef}
-                              type="file"
-                              accept="image/*"
-                              className="hidden"
-                              onChange={handleBarcodeImageUpload}
+                          </div>
+                          {/* Hidden div for file scanning */}
+                          <div id="barcode-reader-hidden" className="hidden" />
+                        </>
+                      ) : (
+                        <div className="flex flex-col items-center w-full z-10 px-8">
+                          <div className="relative w-full max-w-sm rounded-[24px] overflow-hidden shadow-2xl border-4 border-slate-900 mb-6 bg-black">
+                            <div
+                              id="barcode-reader"
+                              className="w-full min-h-[300px]"
                             />
-                          </div>
-                        </div>
-                        {/* Hidden div for file scanning */}
-                        <div id="barcode-reader-hidden" className="hidden" />
-                      </>
-                    ) : (
-                      <div className="flex flex-col items-center w-full z-10 px-8">
-                        <div className="relative w-full max-w-sm rounded-[24px] overflow-hidden shadow-2xl border-4 border-slate-900 mb-6 bg-black">
-                          <div
-                            id="barcode-reader"
-                            className="w-full min-h-[300px]"
-                          />
-                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            <div className="w-[80%] h-[100px] border-2 border-[#84CC16] rounded-xl relative opacity-50">
-                              <div className="absolute top-0 left-0 w-full h-[2px] bg-[#84CC16] shadow-[0_0_10px_#84CC16] animate-[scan_2s_ease-in-out_infinite]" />
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                              <div className="w-[80%] h-[100px] border-2 border-[#84CC16] rounded-xl relative opacity-50">
+                                <div className="absolute top-0 left-0 w-full h-[2px] bg-[#84CC16] shadow-[0_0_10px_#84CC16] animate-[scan_2s_ease-in-out_infinite]" />
+                              </div>
                             </div>
                           </div>
-                        </div>
-                        <Button
-                          onClick={stopScanning}
-                          type="button"
-                          variant="ghost"
-                          className="font-black text-[12px] uppercase tracking-widest text-red-500 hover:text-red-600 hover:bg-red-50 rounded-2xl h-12 px-8"
-                        >
-                          Stop Scanning
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </TabsContent>
-
-                <TabsContent
-                  value="upload"
-                  className="mt-0 border-none p-0 outline-none focus-visible:ring-0"
-                >
-                  <div className="flex flex-col items-center justify-center py-16 border-2 border-dashed border-slate-200 rounded-[32px] bg-slate-50/50 relative overflow-hidden min-h-[400px]">
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-[#84CC16]/5 rounded-full blur-[80px] pointer-events-none" />
-
-                    <div className="relative w-24 h-24 rounded-[28px] bg-white shadow-xl shadow-slate-200/50 flex items-center justify-center mb-8 border border-slate-100 z-10 group">
-                      <FileUp className="w-10 h-10 text-slate-400 group-hover:text-[#84CC16] transition-colors" />
-                      <div className="absolute inset-0 border-2 border-transparent group-hover:border-[#84CC16] rounded-[28px] transition-all" />
-                    </div>
-
-                    <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 mb-3 z-10">
-                      Upload Inventory File
-                    </h3>
-                    <p className="text-slate-500 font-medium text-center max-w-[320px] text-sm leading-relaxed mb-8 z-10">
-                      Upload a CSV or Excel file containing multiple inventory
-                      items to add them in bulk.
-                    </p>
-
-                    {bulkFile ? (
-                      <div className="flex flex-col items-center gap-4 z-10 w-full max-w-sm px-4">
-                        <div className="flex items-center justify-between p-4 bg-white rounded-[20px] border border-slate-200 w-full shadow-sm">
-                          <div className="flex items-center gap-3 overflow-hidden">
-                            <div className="w-10 h-10 rounded-[12px] bg-[#84CC16]/10 flex items-center justify-center shrink-0">
-                              <FileUp className="w-5 h-5 text-[#84CC16]" />
-                            </div>
-                            <div className="truncate">
-                              <p className="text-sm font-bold text-slate-900 truncate">
-                                {bulkFile.name}
-                              </p>
-                              <p className="text-[11px] font-semibold text-slate-400">
-                                {(bulkFile.size / 1024).toFixed(1)} KB
-                              </p>
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => setBulkFile(null)}
-                            className="p-2 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-full transition-colors shrink-0 ml-2"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                        <div className="flex gap-3 w-full">
                           <Button
+                            onClick={stopScanning}
                             type="button"
-                            disabled={isCreatingFromBarcodeBulk}
-                            onClick={() => {
-                              if (!bulkFile) return;
-                              handleCreateFromBarcodeBulk(bulkFile, {
-                                onSuccess: (data) => {
-                                  toast.success("Bulk upload successful");
-                                  setBulkFile(null);
-                                  onClose();
-                                },
-                                onError: (error: unknown) => {
-                                  const apiError = error as {
-                                    response?: { data?: { message?: string } };
-                                  };
-                                  toast.error(
-                                    apiError?.response?.data?.message ||
-                                      "Failed to process bulk file",
-                                  );
-                                },
-                              });
-                            }}
-                            className="flex-1 bg-slate-900 hover:bg-slate-800 text-white rounded-[16px] h-12 font-black uppercase tracking-widest shadow-xl shadow-slate-900/10 active:scale-95 transition-all"
+                            variant="ghost"
+                            className="font-black text-[12px] uppercase tracking-widest text-red-500 hover:text-red-600 hover:bg-red-50 rounded-2xl h-12 px-8"
                           >
-                            {isCreatingFromBarcodeBulk ? (
-                              <Loader2 className="w-5 h-5 animate-spin" />
-                            ) : (
-                              "Process File"
-                            )}
+                            Stop Scanning
                           </Button>
                         </div>
+                      )}
+                    </div>
+                  </TabsContent>
+                )}
+
+                {forceType !== "sold" && (
+                  <TabsContent
+                    value="upload"
+                    className="mt-0 border-none p-0 outline-none focus-visible:ring-0"
+                  >
+                    <div className="flex flex-col items-center justify-center py-16 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-[32px] bg-slate-50/50 dark:bg-slate-900/30 relative overflow-hidden min-h-[400px]">
+                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-[#84CC16]/5 rounded-full blur-[80px] pointer-events-none" />
+
+                      <div className="flex items-center justify-center text-5xl">
+                        <p className="text-slate-500">
+                          Comeing soon................
+                        </p>
                       </div>
-                    ) : (
-                      <div className="relative z-10">
-                        <Button
-                          onClick={() => fileUploadInputRef.current?.click()}
-                          type="button"
-                          className="px-8 py-6 bg-slate-900 hover:bg-slate-800 text-white rounded-[20px] font-black text-[12px] uppercase tracking-widest shadow-xl shadow-slate-900/20 transition-all active:scale-95 flex items-center gap-3"
-                        >
-                          <Upload className="w-5 h-5" />
-                          Choose File
-                        </Button>
-                        <input
-                          ref={fileUploadInputRef}
-                          type="file"
-                          accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
-                          className="hidden"
-                          onChange={handleBulkFileUpload}
-                        />
-                      </div>
-                    )}
-                  </div>
-                </TabsContent>
+                    </div>
+                  </TabsContent>
+                )}
               </Tabs>
             ) : (
               renderFormContent()

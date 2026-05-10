@@ -42,12 +42,18 @@ export const updateInventory = async ({
   input: UpdateInventoryInput;
 }) => {
   const formData = new FormData();
-  if (input.itemName) formData.append("itemName", input.itemName);
-  if (input.expectedPrice !== undefined)
-    formData.append("expectedPrice", String(input.expectedPrice));
-  if (input.currentState) formData.append("currentState", input.currentState);
-  if (input.image instanceof File) {
-    formData.append("image", input.image);
+
+  for (const [key, value] of Object.entries(input)) {
+    if (value === undefined || value === null || value === "") continue;
+
+    if (key === "image" && value instanceof File) {
+      formData.append(key, value);
+      continue;
+    }
+
+    if (key !== "image") {
+      formData.append(key, String(value));
+    }
   }
 
   const response = await api.put(`${BASE}/${id}`, formData, {
@@ -60,12 +66,28 @@ export const deleteInventory = async (id: string) => {
   const response = await api.delete(`${BASE}/${id}`);
   return response.data;
 };
-
 export const createFromBarcode = async (input: {
   code: string;
   userId: string;
+  imeiNumber?: string;
+  purchasePrice?: number;
+  currentState?: string;
+  image?: File;
 }) => {
-  const response = await api.post(`${BASE}/create-from-barcode`, input);
+  const formData = new FormData();
+  Object.entries(input).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      if (key === "image" && value instanceof File) {
+        formData.append(key, value);
+      } else {
+        formData.append(key, String(value));
+      }
+    }
+  });
+
+  const response = await api.post(`${BASE}/create-from-barcode`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
   return response.data;
 };
 
