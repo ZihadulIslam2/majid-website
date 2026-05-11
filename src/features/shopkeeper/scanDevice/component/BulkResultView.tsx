@@ -22,7 +22,10 @@ import {
   AlertTriangle,
   Gauge,
   Database,
-  RadioTower,
+  Tag,
+  Shield,
+  Info,
+  Zap,
 } from "lucide-react";
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { CertificatePDF } from "./CertificatePDF";
@@ -54,12 +57,69 @@ const getStatusColor = (status: string) => {
   }
 };
 
-// Helper function to get risk color class
-const getRiskColorClass = (score: number) => {
-  if (score <= 25) return "text-emerald-400 bg-emerald-500/10";
-  if (score <= 60) return "text-amber-400 bg-amber-500/10";
-  return "text-red-400 bg-red-500/10";
+// Helper function to get risk color
+const getRiskColor = (score: number) => {
+  if (score <= 25)
+    return {
+      stroke: "#22c55e",
+      text: "text-emerald-400",
+      bg: "bg-emerald-500/10",
+    };
+  if (score <= 60)
+    return { stroke: "#f59e0b", text: "text-amber-400", bg: "bg-amber-500/10" };
+  return { stroke: "#ef4444", text: "text-red-400", bg: "bg-red-500/10" };
 };
+
+// Risk Arc Component
+function RiskArc({ score }: { score: number }) {
+  const r = 42;
+  const cx = 56;
+  const cy = 56;
+  const circumference = 2 * Math.PI * r;
+  const progress = Math.max(0, Math.min(score, 100));
+  const arcLength = (270 / 360) * circumference;
+  const filledLength = (progress / 100) * arcLength;
+  const { stroke, text } = getRiskColor(score);
+
+  return (
+    <div
+      className="relative flex items-center justify-center"
+      style={{ width: 112, height: 112 }}
+    >
+      <svg width={112} height={112} style={{ transform: "rotate(135deg)" }}>
+        <circle
+          cx={cx}
+          cy={cy}
+          r={r}
+          fill="none"
+          stroke="rgba(0,0,0,0.08)"
+          strokeWidth={8}
+          strokeDasharray={`${arcLength} ${circumference}`}
+          strokeLinecap="round"
+        />
+        <circle
+          cx={cx}
+          cy={cy}
+          r={r}
+          fill="none"
+          stroke={stroke}
+          strokeWidth={8}
+          strokeDasharray={`${filledLength} ${circumference}`}
+          strokeLinecap="round"
+          style={{
+            transition: "stroke-dasharray 0.8s cubic-bezier(0.4,0,0.2,1)",
+          }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <p className={`text-2xl font-black tabular-nums ${text}`}>{score}</p>
+        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 mt-0.5">
+          /100
+        </p>
+      </div>
+    </div>
+  );
+}
 
 // Helper function to get check icon
 const getCheckIcon = (title?: string) => {
@@ -84,6 +144,118 @@ const getChecksArray = (result: any) => {
     return Object.values(result.checks);
   }
   return Array.isArray(result.checks) ? result.checks : [];
+};
+
+// Helper function to parse provider data rows from HTML
+const parseProviderRows = (
+  html: string,
+): { label: string; value: string }[] => {
+  if (!html) return [];
+
+  const cleanText = html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/?(font|span|b|strong|i|em)[^>]*>/gi, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .trim();
+
+  const rows: { label: string; value: string }[] = [];
+  const lines = cleanText.split("\n");
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    const colonIndex = trimmed.indexOf(":");
+    if (colonIndex > 0) {
+      const label = trimmed.substring(0, colonIndex).trim();
+      const value = trimmed.substring(colonIndex + 1).trim();
+      rows.push({ label, value });
+    } else {
+      rows.push({ label: "Info", value: trimmed });
+    }
+  }
+
+  return rows;
+};
+
+// Helper function to get device image from HTML
+const getDeviceImage = (html: string): string | null => {
+  const imgMatch = html.match(/<img[^>]+src=["']([^"']+)["']/);
+  return imgMatch ? imgMatch[1] : null;
+};
+
+// Helper function to get icon for provider row
+const getProviderRowIcon = (label: string) => {
+  const lowerLabel = label.toLowerCase();
+  if (lowerLabel.includes("device")) return <Smartphone size={18} />;
+  if (lowerLabel.includes("imei")) return <Tag size={18} />;
+  if (lowerLabel.includes("serial")) return <Database size={18} />;
+  if (lowerLabel.includes("warranty")) return <Shield size={18} />;
+  if (lowerLabel.includes("coverage")) return <Check size={18} />;
+  if (lowerLabel.includes("notice")) return <AlertTriangle size={18} />;
+  if (lowerLabel.includes("activation")) return <Zap size={18} />;
+  return <Info size={18} />;
+};
+
+// Helper function to get color scheme for provider row
+const getProviderRowColor = (label: string) => {
+  const lowerLabel = label.toLowerCase();
+  if (lowerLabel.includes("device"))
+    return {
+      bg: "bg-indigo-50",
+      border: "border-indigo-200",
+      iconBg: "bg-indigo-100",
+      text: "text-indigo-600",
+    };
+  if (lowerLabel.includes("imei"))
+    return {
+      bg: "bg-purple-50",
+      border: "border-purple-200",
+      iconBg: "bg-purple-100",
+      text: "text-purple-600",
+    };
+  if (lowerLabel.includes("serial"))
+    return {
+      bg: "bg-cyan-50",
+      border: "border-cyan-200",
+      iconBg: "bg-cyan-100",
+      text: "text-cyan-600",
+    };
+  if (lowerLabel.includes("warranty"))
+    return {
+      bg: "bg-emerald-50",
+      border: "border-emerald-200",
+      iconBg: "bg-emerald-100",
+      text: "text-emerald-600",
+    };
+  if (lowerLabel.includes("coverage"))
+    return {
+      bg: "bg-blue-50",
+      border: "border-blue-200",
+      iconBg: "bg-blue-100",
+      text: "text-blue-600",
+    };
+  if (lowerLabel.includes("notice"))
+    return {
+      bg: "bg-amber-50",
+      border: "border-amber-200",
+      iconBg: "bg-amber-100",
+      text: "text-amber-600",
+    };
+  if (lowerLabel.includes("activation"))
+    return {
+      bg: "bg-green-50",
+      border: "border-green-200",
+      iconBg: "bg-green-100",
+      text: "text-green-600",
+    };
+  return {
+    bg: "bg-gray-50",
+    border: "border-gray-100",
+    iconBg: "bg-gray-100",
+    text: "text-gray-500",
+  };
 };
 
 export const BulkResultView = ({
@@ -113,6 +285,26 @@ export const BulkResultView = ({
     () => batchRows[selectedBatchIndex] ?? null,
     [batchRows, selectedBatchIndex],
   );
+
+  // Get provider data from selected row
+  const currentProviderData = selectedBatchRow?.data?.providerData as
+    | {
+        result?: string;
+        imei?: string;
+        balance?: number;
+        price?: string;
+        id?: number;
+        status?: string;
+        ip?: string;
+      }
+    | undefined;
+
+  const providerHTML = currentProviderData?.result || "";
+  const providerRows = parseProviderRows(providerHTML);
+  const deviceImage = getDeviceImage(providerHTML);
+  const deviceNameFromProvider = providerRows.find(
+    (r) => r.label === "Device",
+  )?.value;
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -166,7 +358,8 @@ export const BulkResultView = ({
   const currentData = selectedBatchRow?.data;
   const checksArray = currentData ? getChecksArray(currentData) : [];
   const riskScore = currentData?.riskMeter?.score || 0;
-  const riskColorClass = getRiskColorClass(riskScore);
+  const riskColor = getRiskColor(riskScore);
+  const statusTone = getStatusColor(currentData?.deviceStatus || "");
 
   return (
     <div className="w-full space-y-6 pb-10 font-poppins">
@@ -342,128 +535,245 @@ export const BulkResultView = ({
         </div>
       </motion.div>
 
-      {/* Selected Result Details Card - New Design */}
+      {/* Selected Result Details - Like SingleResultView */}
       {selectedBatchRow?.ok && selectedBatchRow.data ? (
         <motion.div
           key={selectedBatchIndex}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-[32px] border border-gray-100 overflow-hidden shadow-sm"
+          className="rounded-[32px] overflow-hidden"
         >
-          {/* Download Button */}
-          <div className="flex justify-end p-6 pb-0">
-            <button
-              onClick={handleDownloadSelectedBulkCertificate}
-              disabled={isDownloading}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-black text-[#0F172A] transition hover:bg-gray-50 disabled:cursor-wait disabled:opacity-70 mb-5"
-            >
-              {isDownloading ? (
-                <Loader2 size={16} className="animate-spin" />
-              ) : (
-                <Download size={16} />
-              )}
-              Download Certificate
-            </button>
+          {/* Hero Header Section */}
+          <div>
+            <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-[32px] overflow-hidden shadow-xl">
+              <div className="relative px-6 py-8 md:px-8 md:py-10">
+                <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-5" />
+                <div className="absolute -right-20 -top-20 w-64 h-64 rounded-full bg-[#84CC16]/10 blur-3xl" />
+
+                <div className="relative flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
+                  {/* Left: Title block */}
+                  <div className="max-w-2xl">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-5 w-5 items-center justify-center rounded-md bg-[#84CC16]/20">
+                        <Sparkles size={11} className="text-[#84CC16]" />
+                      </div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#84CC16]">
+                        DEVICE REPORT
+                      </p>
+                    </div>
+
+                    <div className="mt-5 flex items-center gap-4">
+                      {deviceImage ? (
+                        <img
+                          src={deviceImage}
+                          alt="Device"
+                          className="h-14 w-14 object-contain rounded-2xl bg-white/10 p-2"
+                        />
+                      ) : (
+                        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#84CC16]/15 border border-[#84CC16]/30">
+                          <Smartphone size={22} className="text-[#84CC16]" />
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <h2 className="text-2xl font-black text-white md:text-3xl">
+                          {deviceNameFromProvider ||
+                            currentData?.deviceName ||
+                            "Unknown Device"}
+                        </h2>
+                        <p className="mt-1 font-mono text-xs font-semibold text-white/40 tracking-widest">
+                          IMEI: {currentProviderData?.imei || currentData?.imei}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Status badge */}
+                    <div className="mt-5 flex flex-wrap items-center gap-2">
+                      <span
+                        className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-black uppercase tracking-[0.14em] text-white ${statusTone}`}
+                      >
+                        <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                        {currentData?.deviceStatus || "Unknown"}
+                      </span>
+                      {selectedBatchRow.provider && (
+                        <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-white/50">
+                          {selectedBatchRow.provider}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Right: Risk Arc + AI Insight */}
+                  <div className="flex items-center gap-6 bg-white/5 rounded-2xl p-4 backdrop-blur-sm">
+                    <RiskArc score={riskScore} />
+                    <div className="max-w-[200px]">
+                      <div className="flex items-center gap-1 mb-1">
+                        <Sparkles size={12} className="text-[#84CC16]" />
+                        <span className="text-[9px] font-black text-[#84CC16] uppercase tracking-wider">
+                          {currentData?.aiInsight?.title || "AI INSIGHT"}
+                        </span>
+                      </div>
+                      <p className="text-xs text-white/70 leading-relaxed">
+                        {currentData?.aiInsight?.message ||
+                          "No insight available"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Metrics Strip */}
+                <div className="relative mt-8 grid grid-cols-2 gap-3 md:grid-cols-4">
+                  {[
+                    {
+                      label: "Device Status",
+                      value: currentData?.deviceStatus || "Unknown",
+                      icon: Shield,
+                    },
+                    {
+                      label: "Risk Level",
+                      value: currentData?.riskMeter?.label || "Unknown",
+                      icon: Gauge,
+                      accent: riskColor.text,
+                    },
+                    {
+                      label: "Market Value",
+                      value: `$${currentData?.marketValue?.amount?.toFixed(2) || "0.00"} ${currentData?.marketValue?.currency || "USD"}`,
+                      icon: Tag,
+                    },
+                    {
+                      label: "Provider",
+                      value: selectedBatchRow.provider || "IMEI Service",
+                      icon: Database,
+                    },
+                  ].map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <div
+                        key={item.label}
+                        className="rounded-2xl px-4 py-3 bg-white/5 border border-white/10"
+                      >
+                        <div className="flex items-center gap-2 text-white/35">
+                          <Icon size={14} />
+                          <p className="text-[10px] font-black uppercase tracking-[0.18em]">
+                            {item.label}
+                          </p>
+                        </div>
+                        <p
+                          className={`mt-2 text-sm font-black break-words ${item.accent || "text-white"}`}
+                        >
+                          {item.value}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Header Section */}
-          <div className="p-6 pt-0">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-[#84CC16]/10 flex items-center justify-center">
-                  <Smartphone size={28} className="text-[#84CC16]" />
+          {/* Provider Data Section - Device Specifications */}
+          {providerRows.length > 0 && (
+            <div className="py-6 space-y-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-[#84CC16]/10 rounded-xl">
+                  <Smartphone size={20} className="text-[#84CC16]" />
                 </div>
                 <div>
-                  <h1 className="text-2xl md:text-3xl font-black text-[#0F172A] mb-1">
-                    {selectedBatchRow.data.deviceName || "Unknown Device"}
-                  </h1>
-                  <p className="text-[#64748B] font-mono text-sm font-semibold">
-                    IMEI: {selectedBatchRow.data.imei}
+                  <h3 className="text-sm font-black text-[#0F172A] uppercase tracking-tight">
+                    Device Specifications
+                  </h3>
+                  <p className="text-[11px] font-medium text-gray-400">
+                    Detailed breakdown from{" "}
+                    {selectedBatchRow.provider || "Network Provider"}
                   </p>
                 </div>
               </div>
-              <div className="flex flex-col items-end gap-2">
-                <span
-                  className={`px-4 py-2 text-white text-xs font-black rounded-full uppercase tracking-wider shadow-lg ${getStatusColor(
-                    selectedBatchRow.data.deviceStatus || "",
-                  )}`}
-                >
-                  {selectedBatchRow.data.deviceStatus || "Unknown"}
-                </span>
-                {selectedBatchRow.provider && (
-                  <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-3 py-1 rounded-full">
-                    {selectedBatchRow.provider}
-                  </span>
-                )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {providerRows.map((row, idx) => {
+                  const labelLower = row.label.toLowerCase();
+
+                  // Logical color & icon mapping
+                  const isPositive =
+                    labelLower.includes("warranty") ||
+                    labelLower.includes("coverage") ||
+                    labelLower.includes("valid");
+                  const isNeutral =
+                    labelLower.includes("model") ||
+                    labelLower.includes("color") ||
+                    labelLower.includes("capacity");
+
+                  let statusClass = "bg-slate-50 text-slate-500";
+                  let Icon = Tag;
+
+                  if (isPositive) {
+                    statusClass = "bg-emerald-50 text-emerald-500";
+                    Icon = ShieldCheck;
+                  } else if (
+                    labelLower.includes("carrier") ||
+                    labelLower.includes("sim") ||
+                    labelLower.includes("activation")
+                  ) {
+                    statusClass = "bg-blue-50 text-blue-500";
+                    Icon = Zap;
+                  } else if (isNeutral) {
+                    statusClass = "bg-slate-50 text-slate-600";
+                    Icon = Smartphone;
+                  } else if (labelLower.includes("imei")) {
+                    statusClass = "bg-purple-50 text-purple-500";
+                    Icon = Tag;
+                  } else if (labelLower.includes("serial")) {
+                    statusClass = "bg-cyan-50 text-cyan-500";
+                    Icon = Database;
+                  }
+
+                  return (
+                    <motion.div
+                      key={idx}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.05 }}
+                      className="bg-white rounded-2xl p-5 border border-gray-100 hover:border-[#84CC16]/30 hover:shadow-xl hover:shadow-gray-200/40 transition-all duration-300"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start gap-4">
+                          {/* Icon Box like Security Checks */}
+                          <div
+                            className={`p-3 rounded-xl ${statusClass} shrink-0`}
+                          >
+                            <Icon size={22} strokeWidth={2.5} />
+                          </div>
+
+                          <div className="space-y-1">
+                            <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                              {row.label}
+                            </h4>
+                            <p className="text-[15px] font-bold text-[#0F172A] leading-snug break-words">
+                              {row.value}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Status Indicator */}
+                        <div className="hidden sm:flex h-6 w-6 rounded-full bg-gray-50 items-center justify-center border border-gray-100">
+                          <div
+                            className={`h-1.5 w-1.5 rounded-full ${isPositive ? "bg-emerald-500" : "bg-slate-300"}`}
+                          />
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
               </div>
             </div>
+          )}
 
-            {/* Risk Meter & Market Value */}
-            <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="space-y-4">
-                <div className="flex justify-between items-end">
-                  <span className="text-[10px] font-black text-[#94A3B8] uppercase tracking-wider">
-                    Risk Meter
-                  </span>
-                  <span
-                    className={`text-xs font-black ${riskColorClass} px-2 py-1 rounded-full`}
-                  >
-                    {riskScore}/100
-                  </span>
-                </div>
-                <div className="h-2.5 w-full bg-gray-100 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-emerald-500 via-amber-500 to-red-500 rounded-full transition-all duration-1000"
-                    style={{ width: `${riskScore}%` }}
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <Gauge size={14} className="text-gray-400" />
-                  <p className="text-sm font-bold text-[#0F172A]">
-                    {selectedBatchRow.data.riskMeter?.label || "Risk Unknown"}
-                  </p>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="text-[10px] font-black text-[#94A3B8] uppercase tracking-wider mb-1">
-                  Market Value
-                </p>
-                <p className="text-3xl font-black text-[#0F172A]">
-                  $
-                  {selectedBatchRow.data.marketValue?.amount?.toFixed(2) ||
-                    "0.00"}
-                  <span className="text-sm font-medium text-gray-400 ml-1">
-                    {selectedBatchRow.data.marketValue?.currency || "USD"}
-                  </span>
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* AI Insight Card */}
-          <div className="mx-6 mb-6 p-5 bg-gradient-to-r from-[#F8FAFC] to-white rounded-2xl border border-gray-100">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="p-1.5 bg-[#84CC16]/10 rounded-lg">
-                <Sparkles size={14} className="text-[#84CC16]" />
-              </div>
-              <span className="text-[10px] font-black text-[#84CC16] uppercase tracking-wider">
-                {selectedBatchRow.data.aiInsight?.title || "AI INSIGHT"}
-              </span>
-            </div>
-            <p className="text-sm text-gray-600 italic leading-relaxed">
-              &quot;
-              {selectedBatchRow.data.aiInsight?.message ||
-                "No insight available"}
-              &quot;
-            </p>
-          </div>
-
-          {/* Checks Grid */}
+          {/* Security Checks */}
           <div className="px-6 pb-6">
-            <h3 className="text-sm font-black text-[#0F172A] mb-4">
+            <h3 className="text-sm font-black text-[#0F172A] mb-4 flex items-center gap-2">
+              <ShieldCheck size={16} className="text-[#84CC16]" />
               Security Checks
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {checksArray.map((check: any, idx: number) => {
                 const Icon = getCheckIcon(check?.title);
                 const statusClass =
@@ -512,52 +822,50 @@ export const BulkResultView = ({
           </div>
 
           {/* Metadata Footer */}
-          <div className="p-6 bg-gray-50/50 border-t border-gray-100">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+          {/* Metadata Footer */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.7 }}
+            className="bg-gray-50 rounded-3xl p-6 border border-gray-100 mx-6 mb-6"
+          >
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
-                <span className="text-gray-400 block mb-1 text-[10px] font-black uppercase tracking-wider">
+                <p className="text-[9px] font-black text-gray-400 uppercase tracking-wider mb-1">
                   Provider
-                </span>
-                <span className="font-bold text-gray-700 text-sm">
+                </p>
+                <p className="text-sm font-bold text-gray-700">
                   {selectedBatchRow.provider || "API"}
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-400 block mb-1 text-[10px] font-black uppercase tracking-wider">
-                  Service ID
-                </span>
-                <span className="font-bold text-gray-700 text-sm">
-                  {selectedBatchRow.serviceId ?? "N/A"}
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-400 block mb-1 text-[10px] font-black uppercase tracking-wider">
-                  Row Number
-                </span>
-                <span className="font-bold text-gray-700 text-sm">
-                  {selectedBatchRow.rowNumber} / {batchRows.length}
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-400 block mb-1 text-[10px] font-black uppercase tracking-wider">
-                  Status
-                </span>
-                <span
-                  className={`font-bold text-sm ${selectedBatchRow.ok ? "text-emerald-600" : "text-red-600"}`}
-                >
-                  {selectedBatchRow.ok ? "Success" : "Failed"}
-                </span>
-              </div>
-            </div>
-            {selectedBatchRow.message && (
-              <div className="mt-4 pt-3 border-t border-gray-100">
-                <p className="text-[11px] text-gray-500">
-                  <span className="font-black">Message:</span>{" "}
-                  {selectedBatchRow.message}
                 </p>
               </div>
-            )}
-          </div>
+              <div>
+                <p className="text-[9px] font-black text-gray-400 uppercase tracking-wider mb-1">
+                  Service ID
+                </p>
+                <p className="text-sm font-bold text-gray-700">
+                  {selectedBatchRow.serviceId ?? "N/A"}
+                </p>
+              </div>
+              <div>
+                <p className="text-[9px] font-black text-gray-400 uppercase tracking-wider mb-1">
+                  Row Number
+                </p>
+                <p className="text-sm font-bold text-gray-700">
+                  {selectedBatchRow.rowNumber} / {batchRows.length}
+                </p>
+              </div>
+              <div>
+                <p className="text-[9px] font-black text-gray-400 uppercase tracking-wider mb-1">
+                  Balance
+                </p>
+                <p className="text-sm font-bold text-gray-700">
+                  {currentProviderData?.balance !== undefined
+                    ? `$${currentProviderData.balance.toFixed(3)}`
+                    : "N/A"}
+                </p>
+              </div>
+            </div>
+          </motion.div>
         </motion.div>
       ) : selectedBatchRow ? (
         <motion.div
