@@ -9,9 +9,10 @@ import {
   Info,
   Check,
   Upload,
+  Star,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { getServicesApi } from "@/features/shopkeeper/scanDevice/api/scanDevice.api";
@@ -34,7 +35,6 @@ export default function Banner() {
   );
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
-  // const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
   const { status } = useSession();
   const router = useRouter();
 
@@ -44,14 +44,8 @@ export default function Banner() {
         const response = await getServicesApi();
         if (response.success && response.data) {
           setServiceCategories(response.data);
-          // Flatten for initial selection or fallback
           const allServices = response.data.flatMap((cat) => cat.services);
           setServices(allServices);
-          // if (allServices.length > 0) {
-          //   setSelectedService(
-          //     allServices.find((s) => s.serviceId === 6) || allServices[0],
-          //   );
-          // }
         }
       } catch (err) {
         console.error("Failed to fetch services:", err);
@@ -60,7 +54,28 @@ export default function Banner() {
     fetchServices();
   }, []);
 
-  const filteredCategories = serviceCategories
+  // Reorder categories: put "fevourite" first, then sort others alphabetically
+  const orderedCategories = useMemo(() => {
+    const favouriteCategory = serviceCategories.find(
+      (cat) => cat.category.toLowerCase() === "fevourite",
+    );
+    const otherCategories = serviceCategories.filter(
+      (cat) => cat.category.toLowerCase() !== "fevourite",
+    );
+
+    // Sort other categories alphabetically
+    const sortedOtherCategories = [...otherCategories].sort((a, b) =>
+      a.category.localeCompare(b.category),
+    );
+
+    // Return favourite first, then others
+    return favouriteCategory
+      ? [favouriteCategory, ...sortedOtherCategories]
+      : sortedOtherCategories;
+  }, [serviceCategories]);
+
+  // Filter categories and services based on search term
+  const filteredCategories = orderedCategories
     .map((cat) => ({
       ...cat,
       services: cat.services.filter((svc) =>
@@ -127,8 +142,7 @@ export default function Banner() {
 
   return (
     <section className="relative flex min-h-[680px] overflow-hidden lg:h-[1060px] lg:min-h-0">
-      {/* ================= BACKGROUND ================= */}
-
+      {/* Background (same as before) */}
       <div className="absolute inset-0 z-0 bg-background">
         <div className="absolute left-1/2 top-[42%] h-[330px] w-[860px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[linear-gradient(90deg,rgba(189,230,59,0.9)_0%,rgba(124,203,180,0.72)_48%,rgba(49,138,251,0.9)_100%)] blur-[82px] md:h-[520px] md:w-[1280px] lg:h-[658px] lg:w-[1520px]" />
         <div className="absolute left-1/2 top-[42%] h-[230px] w-[560px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-background/20 blur-[60px] md:h-[420px] md:w-[900px] lg:h-[538px] lg:w-[1016px]" />
@@ -136,7 +150,7 @@ export default function Banner() {
         <div className="absolute inset-x-0 bottom-0 h-[220px] bg-gradient-to-b from-background/0 via-background/75 to-background" />
       </div>
 
-      {/* ================= CONTENT ================= */}
+      {/* Content */}
       <div className="relative z-10 flex w-full flex-col items-center px-4 pb-20 pt-32 text-center sm:px-6 md:pb-24 md:pt-44 lg:px-[200px] lg:pb-[120px] lg:pt-[180px]">
         <motion.h1
           initial={{ opacity: 0, y: 30 }}
@@ -157,7 +171,7 @@ export default function Banner() {
           <span className="block text-brand-lime-soft lg:hidden">
             Intelligence
           </span>
-          <span className="block  lg:hidden">in Real-Time</span>
+          <span className="block lg:hidden">in Real-Time</span>
         </motion.h1>
 
         <motion.p
@@ -247,99 +261,139 @@ export default function Banner() {
 
                     <div className="max-h-[450px] overflow-y-auto custom-scrollbar p-3">
                       {filteredCategories.length > 0 ? (
-                        filteredCategories.map((cat) => (
-                          <div key={cat.category} className="mb-6 last:mb-2">
-                            <h3 className="px-4 mb-2 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/60 flex items-center gap-2">
-                              <div className="h-px flex-1 bg-border/50" />
-                              {cat.category}
-                              <div className="h-px flex-1 bg-border/50" />
-                            </h3>
-                            <div className="space-y-1">
-                              {cat.services.map((svc) => {
-                                const isApple =
-                                  cat.category
-                                    .toLowerCase()
-                                    .includes("apple") ||
-                                  svc.name.toLowerCase().includes("apple") ||
-                                  svc.name.toLowerCase().includes("iphone");
-                                const isSamsung =
-                                  cat.category
-                                    .toLowerCase()
-                                    .includes("samsung") ||
-                                  svc.name.toLowerCase().includes("samsung");
-                                const isSelected =
-                                  selectedService?._id === svc._id;
+                        filteredCategories.map((cat) => {
+                          const isFavourite =
+                            cat.category.toLowerCase() === "fevourite";
 
-                                return (
-                                  <button
-                                    key={svc._id}
-                                    onClick={() => {
-                                      setSelectedService(svc);
-                                      setIsDropdownOpen(false);
-                                      setSearchTerm("");
-                                    }}
-                                    className={`w-full flex items-center gap-4 p-4 rounded-[20px] transition-all group ${
-                                      isSelected
-                                        ? "bg-primary text-primary-foreground shadow-lg shadow-lime-500/30"
-                                        : "hover:bg-muted border border-transparent hover:border-border"
-                                    }`}
-                                  >
-                                    <div
-                                      className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                          return (
+                            <div
+                              key={cat.category}
+                              className={`mb-6 last:mb-2 ${
+                                isFavourite ? "bg-amber-50/20 rounded-2xl" : ""
+                              }`}
+                            >
+                              {/* Category Header with Favourite highlight */}
+                              <h3 className="px-4 mb-2 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/60 flex items-center gap-2">
+                                <div className="h-px flex-1 bg-border/50" />
+                                {isFavourite && (
+                                  <Star
+                                    size={12}
+                                    className="text-amber-500 fill-amber-500"
+                                  />
+                                )}
+                                <span
+                                  className={
+                                    isFavourite ? "text-amber-500" : ""
+                                  }
+                                >
+                                  {cat.category}
+                                </span>
+                                {isFavourite && (
+                                  <span className="text-[8px] font-bold text-amber-600 bg-amber-200/50 px-1.5 py-0.5 rounded-full">
+                                    Featured
+                                  </span>
+                                )}
+                                <div className="h-px flex-1 bg-border/50" />
+                              </h3>
+                              <div className="space-y-1">
+                                {cat.services.map((svc) => {
+                                  const isApple =
+                                    cat.category
+                                      .toLowerCase()
+                                      .includes("apple") ||
+                                    svc.name.toLowerCase().includes("apple") ||
+                                    svc.name.toLowerCase().includes("iphone");
+                                  const isSamsung =
+                                    cat.category
+                                      .toLowerCase()
+                                      .includes("samsung") ||
+                                    svc.name.toLowerCase().includes("samsung");
+                                  const isSelected =
+                                    selectedService?._id === svc._id;
+                                  const isFavouriteService = isFavourite;
+
+                                  return (
+                                    <button
+                                      key={svc._id}
+                                      onClick={() => {
+                                        setSelectedService(svc);
+                                        setIsDropdownOpen(false);
+                                        setSearchTerm("");
+                                      }}
+                                      className={`w-full flex items-center gap-4 p-4 rounded-[20px] transition-all group ${
                                         isSelected
-                                          ? "bg-white/20"
-                                          : isApple
-                                            ? "bg-muted text-muted-foreground"
-                                            : isSamsung
-                                              ? "bg-blue-500/10 text-blue-500"
-                                              : "bg-green-500/10 text-green-500"
+                                          ? "bg-primary text-primary-foreground shadow-lg shadow-lime-500/30"
+                                          : isFavouriteService
+                                            ? "hover:bg-amber-50/50 border border-transparent hover:border-amber-200"
+                                            : "hover:bg-muted border border-transparent hover:border-border"
                                       }`}
                                     >
-                                      <Info size={22} />
-                                    </div>
-                                    <div className="flex flex-col items-start flex-1 min-w-0">
-                                      <span
-                                        className={`text-[14px] font-black truncate w-full text-left ${
+                                      <div
+                                        className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
                                           isSelected
-                                            ? "text-white"
-                                            : "text-foreground"
+                                            ? "bg-white/20"
+                                            : isFavouriteService
+                                              ? "bg-amber-100 text-amber-600"
+                                              : isApple
+                                                ? "bg-muted text-muted-foreground"
+                                                : isSamsung
+                                                  ? "bg-blue-500/10 text-blue-500"
+                                                  : "bg-green-500/10 text-green-500"
                                         }`}
                                       >
-                                        {svc.name}
-                                      </span>
-                                      <div className="flex items-center gap-3 mt-1">
+                                        {isFavouriteService ? (
+                                          <Star
+                                            size={22}
+                                            className="fill-amber-500"
+                                          />
+                                        ) : (
+                                          <Info size={22} />
+                                        )}
+                                      </div>
+                                      <div className="flex flex-col items-start flex-1 min-w-0">
                                         <span
-                                          className={`text-[10px] font-bold uppercase tracking-widest ${
-                                            isSelected
-                                              ? "text-white/70"
-                                              : "text-muted-foreground"
-                                          }`}
-                                        >
-                                          ID: {svc.serviceId || "N/A"}
-                                        </span>
-                                        <div className="w-1 h-1 rounded-full bg-current opacity-30" />
-                                        <span
-                                          className={`text-[12px] font-black ${
+                                          className={`text-[14px] font-black truncate w-full text-left ${
                                             isSelected
                                               ? "text-white"
-                                              : "text-primary"
+                                              : "text-foreground"
                                           }`}
                                         >
-                                          {svc.priceLabel}
+                                          {svc.name}
                                         </span>
+                                        <div className="flex items-center gap-3 mt-1">
+                                          <span
+                                            className={`text-[10px] font-bold uppercase tracking-widest ${
+                                              isSelected
+                                                ? "text-white/70"
+                                                : "text-muted-foreground"
+                                            }`}
+                                          >
+                                            ID: {svc.serviceId || "N/A"}
+                                          </span>
+                                          <div className="w-1 h-1 rounded-full bg-current opacity-30" />
+                                          <span
+                                            className={`text-[12px] font-black ${
+                                              isSelected
+                                                ? "text-white"
+                                                : "text-primary"
+                                            }`}
+                                          >
+                                            {svc.priceLabel}
+                                          </span>
+                                        </div>
                                       </div>
-                                    </div>
-                                    {isSelected && (
-                                      <motion.div layoutId="selected-check">
-                                        <Check size={20} strokeWidth={4} />
-                                      </motion.div>
-                                    )}
-                                  </button>
-                                );
-                              })}
+                                      {isSelected && (
+                                        <motion.div layoutId="selected-check">
+                                          <Check size={20} strokeWidth={4} />
+                                        </motion.div>
+                                      )}
+                                    </button>
+                                  );
+                                })}
+                              </div>
                             </div>
-                          </div>
-                        ))
+                          );
+                        })
                       ) : (
                         <div className="p-10 text-center space-y-3">
                           <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto text-muted-foreground/60">
@@ -372,10 +426,9 @@ export default function Banner() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
-          className="mt-14 flex w-full max-w-4xl flex-col items-center gap-5"
+          className="mt-12 flex w-full max-w-6xl flex-col items-center gap-8"
         >
-          {/* Specialized Cards Row */}
-          <div className="flex justify-center gap-6 w-full">
+          <div className="flex flex-wrap justify-center gap-6">
             {quickChecks
               .filter((tag) => tag.type === "specialized")
               .map((tag, i) => (
@@ -387,10 +440,9 @@ export default function Banner() {
                     setSearchTerm(tag.keyword);
                     setIsDropdownOpen(true);
                   }}
-                  className="group relative flex w-[100px] cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl bg-white/20 p-4 backdrop-blur-md transition-all duration-300 hover:bg-white/10 hover:shadow-[0_8px_25px_rgba(132,204,22,0.2)] border border-white/20 w-[200px]"
+                  className="group relative flex w-[140px] cursor-pointer flex-col items-center gap-2 rounded-2xl bg-white/20 p-4 backdrop-blur-md transition-all duration-300 hover:bg-white/10 hover:shadow-[0_8px_25px_rgba(132,204,22,0.2)] border border-white/20"
                 >
                   <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-white/10 via-transparent to-white/5 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-
                   <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-primary/0 via-primary/30 to-primary/0 opacity-0 blur-xl transition-opacity duration-300 group-hover:opacity-100" />
 
                   <div className="relative z-10 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 text-2xl shadow-lg transition-all duration-300 group-hover:from-primary/30 group-hover:to-primary/20 group-hover:shadow-primary/20">
@@ -422,18 +474,11 @@ export default function Banner() {
             >
               Free Checks
             </button>
-            {/* <button
-              onClick={() => setIsBulkModalOpen(true)}
-              className="h-12 cursor-pointer rounded-full border-primary text-primary bg-white/20 border  px-8 text-base font-extrabold leading-none shadow-lg backdrop-blur-md transition-all active:scale-95 flex items-center gap-2 hover:bg-primary hover:text-white dark:text-white"
-            >
-              <Upload size={18} />
-              Bulk Check
-            </button> */}
           </div>
         </motion.div>
       </div>
 
-      {/* Login Required Modal */}
+      {/* Login Modal (same as before) */}
       <AnimatePresence>
         {showLoginModal && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -504,11 +549,6 @@ export default function Banner() {
         onClose={() => setIsScannerOpen(false)}
         onScan={(imei) => setImei(imei)}
       />
-      {/* <BulkImeiUploadModal
-        isOpen={isBulkModalOpen}
-        onClose={() => setIsBulkModalOpen(false)}
-        serviceId={selectedService?.serviceId || 6}
-      /> */}
     </section>
   );
 }
