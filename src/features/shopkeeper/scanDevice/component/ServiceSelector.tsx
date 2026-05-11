@@ -1,8 +1,8 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, Search, Info, Check } from "lucide-react";
-import { useState } from "react";
+import { ChevronDown, Search, Info, Check, Star } from "lucide-react";
+import { useState, useMemo } from "react";
 import {
   ServiceCategory,
   IMEIService,
@@ -27,8 +27,28 @@ export const ServiceSelector = ({
 }: ServiceSelectorProps) => {
   const [searchTerm, setSearchTerm] = useState("");
 
+  // Reorder categories: put "fevourite" first, then sort others alphabetically
+  const orderedCategories = useMemo(() => {
+    const favouriteCategory = serviceCategories.find(
+      (cat) => cat.category.toLowerCase() === "fevourite",
+    );
+    const otherCategories = serviceCategories.filter(
+      (cat) => cat.category.toLowerCase() !== "fevourite",
+    );
+
+    // Sort other categories alphabetically
+    const sortedOtherCategories = [...otherCategories].sort((a, b) =>
+      a.category.localeCompare(b.category),
+    );
+
+    // Return favourite first, then others
+    return favouriteCategory
+      ? [favouriteCategory, ...sortedOtherCategories]
+      : sortedOtherCategories;
+  }, [serviceCategories]);
+
   // Filter categories and services based on search term
-  const filteredCategories = serviceCategories
+  const filteredCategories = orderedCategories
     .map((cat) => ({
       ...cat,
       services: cat.services.filter((svc) =>
@@ -96,105 +116,144 @@ export const ServiceSelector = ({
             {/* Services List */}
             <div className="max-h-[350px] overflow-y-auto custom-scrollbar">
               {filteredCategories.length > 0 ? (
-                filteredCategories.map((cat) => (
-                  <div
-                    key={cat.category}
-                    className="border-b border-gray-50 last:border-0"
-                  >
-                    {/* Category Header */}
-                    <div className="px-4 py-2 bg-gray-50/30">
-                      <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-wider">
-                        {cat.category}
-                      </h3>
-                    </div>
+                filteredCategories.map((cat) => {
+                  const isFavourite =
+                    cat.category.toLowerCase() === "fevourite";
 
-                    {/* Services */}
-                    <div className="p-1">
-                      {cat.services.map((svc) => {
-                        const isApple =
-                          cat.category.toLowerCase().includes("apple") ||
-                          svc.name.toLowerCase().includes("apple") ||
-                          svc.name.toLowerCase().includes("iphone");
-                        const isSamsung =
-                          cat.category.toLowerCase().includes("samsung") ||
-                          svc.name.toLowerCase().includes("samsung");
-                        const isSelected = selectedService?._id === svc._id;
-
-                        return (
-                          <button
-                            key={svc._id}
-                            onClick={() => {
-                              setSelectedService(svc);
-                              setIsDropdownOpen(false);
-                              setSearchTerm("");
-                            }}
-                            className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all group ${
-                              isSelected
-                                ? "bg-[#84CC16] text-white shadow-sm"
-                                : "hover:bg-gray-50"
+                  return (
+                    <div
+                      key={cat.category}
+                      className={`border-b border-gray-50 last:border-0 ${
+                        isFavourite ? "bg-amber-50/30" : ""
+                      }`}
+                    >
+                      {/* Category Header */}
+                      <div
+                        className={`px-4 py-2 ${
+                          isFavourite ? "bg-amber-100/50" : "bg-gray-50/30"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          {isFavourite && (
+                            <Star
+                              size={12}
+                              className="text-amber-500 fill-amber-500"
+                            />
+                          )}
+                          <h3
+                            className={`text-[10px] font-black uppercase tracking-wider ${
+                              isFavourite ? "text-amber-600" : "text-gray-400"
                             }`}
                           >
-                            {/* Icon */}
-                            <div
-                              className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                            {cat.category}
+                          </h3>
+                          {isFavourite && (
+                            <span className="text-[8px] font-bold text-amber-600 bg-amber-200/50 px-1.5 py-0.5 rounded-full">
+                              Featured
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Services */}
+                      <div className="p-1">
+                        {cat.services.map((svc) => {
+                          const isApple =
+                            cat.category.toLowerCase().includes("apple") ||
+                            svc.name.toLowerCase().includes("apple") ||
+                            svc.name.toLowerCase().includes("iphone");
+                          const isSamsung =
+                            cat.category.toLowerCase().includes("samsung") ||
+                            svc.name.toLowerCase().includes("samsung");
+                          const isSelected = selectedService?._id === svc._id;
+                          const isFavouriteService = isFavourite;
+
+                          return (
+                            <button
+                              key={svc._id}
+                              onClick={() => {
+                                setSelectedService(svc);
+                                setIsDropdownOpen(false);
+                                setSearchTerm("");
+                              }}
+                              className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all group ${
                                 isSelected
-                                  ? "bg-white/20 text-white"
-                                  : isApple
-                                    ? "bg-gray-100 text-gray-600"
-                                    : isSamsung
-                                      ? "bg-blue-50 text-blue-500"
-                                      : "bg-green-50 text-green-500"
+                                  ? "bg-[#84CC16] text-white shadow-sm"
+                                  : isFavouriteService
+                                    ? "hover:bg-amber-50"
+                                    : "hover:bg-gray-50"
                               }`}
                             >
-                              <Info size={18} />
-                            </div>
-
-                            {/* Service Info */}
-                            <div className="flex flex-col items-start flex-1 min-w-0">
-                              <span
-                                className={`text-[13px] font-black truncate w-full text-left ${
-                                  isSelected ? "text-white" : "text-[#0F172A]"
+                              {/* Icon */}
+                              <div
+                                className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                                  isSelected
+                                    ? "bg-white/20 text-white"
+                                    : isFavouriteService
+                                      ? "bg-amber-100 text-amber-600"
+                                      : isApple
+                                        ? "bg-gray-100 text-gray-600"
+                                        : isSamsung
+                                          ? "bg-blue-50 text-blue-500"
+                                          : "bg-green-50 text-green-500"
                                 }`}
                               >
-                                {svc.name}
-                              </span>
-                              <div className="flex items-center gap-2 mt-0.5">
-                                <span
-                                  className={`text-[9px] font-bold uppercase tracking-wider ${
-                                    isSelected
-                                      ? "text-white/70"
-                                      : "text-gray-400"
-                                  }`}
-                                >
-                                  ID: {svc.serviceId || "N/A"}
-                                </span>
-                                <div className="w-0.5 h-0.5 rounded-full bg-current opacity-30" />
-                                <span
-                                  className={`text-[10px] font-black ${
-                                    isSelected ? "text-white" : "text-[#84CC16]"
-                                  }`}
-                                >
-                                  {svc.priceLabel}
-                                </span>
+                                {isFavouriteService ? (
+                                  <Star size={18} className="fill-amber-500" />
+                                ) : (
+                                  <Info size={18} />
+                                )}
                               </div>
-                            </div>
 
-                            {/* Selected Check Icon */}
-                            {isSelected && (
-                              <motion.div
-                                initial={{ scale: 0 }}
-                                animate={{ scale: 1 }}
-                                layoutId="selected-check"
-                              >
-                                <Check size={16} strokeWidth={3} />
-                              </motion.div>
-                            )}
-                          </button>
-                        );
-                      })}
+                              {/* Service Info */}
+                              <div className="flex flex-col items-start flex-1 min-w-0">
+                                <span
+                                  className={`text-[13px] font-black truncate w-full text-left ${
+                                    isSelected ? "text-white" : "text-[#0F172A]"
+                                  }`}
+                                >
+                                  {svc.name}
+                                </span>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  <span
+                                    className={`text-[9px] font-bold uppercase tracking-wider ${
+                                      isSelected
+                                        ? "text-white/70"
+                                        : "text-gray-400"
+                                    }`}
+                                  >
+                                    ID: {svc.serviceId || "N/A"}
+                                  </span>
+                                  <div className="w-0.5 h-0.5 rounded-full bg-current opacity-30" />
+                                  <span
+                                    className={`text-[10px] font-black ${
+                                      isSelected
+                                        ? "text-white"
+                                        : "text-[#84CC16]"
+                                    }`}
+                                  >
+                                    {svc.priceLabel}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Selected Check Icon */}
+                              {isSelected && (
+                                <motion.div
+                                  initial={{ scale: 0 }}
+                                  animate={{ scale: 1 }}
+                                  layoutId="selected-check"
+                                >
+                                  <Check size={16} strokeWidth={3} />
+                                </motion.div>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               ) : (
                 <div className="p-8 text-center space-y-2">
                   <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto">
