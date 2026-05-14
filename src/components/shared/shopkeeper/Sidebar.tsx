@@ -46,14 +46,14 @@ const navItems = [
     href: "/shopkeeper/payment",
     submenu: [
       { label: "Payment History", href: "/shopkeeper/payment/history" },
-      { label: "Add funds", href: "/shopkeeper/payment/add-funds" },
+      { label: "Pricing Plane", href: "/shopkeeper/payment/add-funds" },
     ],
   },
-  {
-    icon: <Tag size={20} />,
-    label: "Pricing Plane",
-    href: "/shopkeeper/pricing",
-  },
+  // {
+  //   icon: <Tag size={20} />,
+  //   label: "Pricing Plane",
+  //   href: "/shopkeeper/pricing",
+  // },
   {
     icon: <Package size={20} />,
     label: "Inventory",

@@ -195,10 +195,11 @@ export interface ScanResultData {
 
 export interface BulkBarcodeItem {
   code: string;
-  imeiNumber: string;
   purchasePrice: number;
   quantity: number;
-  currentState: "new" | "good condition";
+  currentState: string;
+  color: string;
+  storage: string;
 }
 
 export interface CreateFromBarcodeBulkInput {

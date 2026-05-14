@@ -29,6 +29,7 @@ import { Button } from "@/components/ui/button";
 import {
   Loader2,
   Upload,
+  MoreVertical,
   X,
   Smartphone,
   Hash,
@@ -50,6 +51,7 @@ import {
   AlertTriangle,
   FileText,
   Settings,
+  Scan,
   Plus,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -104,9 +106,9 @@ export function InventoryFormModal({
   const [barcodeImagePreview, setBarcodeImagePreview] = useState<string | null>(
     null,
   );
-  const [bulkFile, setBulkFile] = useState<File | null>(null);
   const [manualBarcode, setManualBarcode] = useState("");
   const [barcodeImei, setBarcodeImei] = useState("");
+  const [activeTab, setActiveTab] = useState("manual");
   const [barcodePurchasePrice, setBarcodePurchasePrice] = useState("");
   const [barcodeCondition, setBarcodeCondition] = useState("new");
   const [barcodeDeviceImage, setBarcodeDeviceImage] = useState<File | null>(
@@ -115,26 +117,34 @@ export function InventoryFormModal({
   const [barcodeDeviceImagePreview, setBarcodeDeviceImagePreview] = useState<
     string | null
   >(null);
+  const [scannedItemId, setScannedItemId] = useState<string | null>(null);
+  const [isCustomBrand, setIsCustomBrand] = useState(false);
+  const [isCustomCondition, setIsCustomCondition] = useState(false);
 
-  const { mutate: createItem, isPending: isCreating } = useCreateInventory();
-  const { mutate: updateItem, isPending: isUpdating } = useUpdateInventory();
-  const { mutate: handleCreateFromBarcode, isPending: isCreatingFromBarcode } =
-    useCreateFromBarcode();
-  const {
-    mutate: handleCreateFromBarcodeBulk,
-    isPending: isCreatingFromBarcodeBulk,
-  } = useCreateFromBarcodeBulk();
-  const { data: session } = useSession();
-  const [scanResultModalData, setScanResultModalData] =
-    useState<ScanResultData | null>(null);
+  const BRANDS = [
+    "Apple",
+    "Samsung",
+    "Google",
+    "Huawei",
+    "Xiaomi",
+    "Oppo",
+    "Vivo",
+    "Sony",
+    "LG",
+    "Nokia",
+    "OnePlus",
+    "Other",
+  ];
 
+  // Bulk Upload States
   const [bulkItems, setBulkItems] = useState<BulkBarcodeItem[]>([
     {
       code: "",
-      imeiNumber: "",
       purchasePrice: 0,
       quantity: 1,
       currentState: "new",
+      color: "",
+      storage: "",
     },
   ]);
 
@@ -143,91 +153,77 @@ export function InventoryFormModal({
       ...bulkItems,
       {
         code: "",
-        imeiNumber: "",
         purchasePrice: 0,
         quantity: 1,
         currentState: "new",
+        color: "",
+        storage: "",
       },
     ]);
   };
 
   const removeBulkRow = (index: number) => {
     if (bulkItems.length > 1) {
-      const newItems = [...bulkItems];
-      newItems.splice(index, 1);
-      setBulkItems(newItems);
-    } else {
-      setBulkItems([
-        {
-          code: "",
-          imeiNumber: "",
-          purchasePrice: 0,
-          quantity: 1,
-          currentState: "new",
-        },
-      ]);
+      setBulkItems(bulkItems.filter((_, i) => i !== index));
     }
   };
 
-  const updateBulkItem = (
+  const updateBulkItem = <K extends keyof BulkBarcodeItem>(
     index: number,
-    field: keyof BulkBarcodeItem,
-    value: string | number,
+    field: K,
+    value: BulkBarcodeItem[K],
   ) => {
-    const newItems = [...bulkItems];
-    newItems[index] = { ...newItems[index], [field]: value } as BulkBarcodeItem;
-    setBulkItems(newItems);
+    const updated = [...bulkItems];
+    updated[index] = { ...updated[index], [field]: value };
+    setBulkItems(updated);
   };
 
   const handleBulkSubmit = () => {
-    const validItems = bulkItems.filter((item) => item.code.trim() !== "");
+    const validItems = bulkItems.filter((i) => i.code.trim());
     if (validItems.length === 0) {
-      toast.error("Please enter at least one barcode");
+      toast.error("Please add at least one item with a code");
       return;
     }
 
-    if ((session?.user as { id: string })?.id) {
-      handleCreateFromBarcodeBulk(
-        {
-          userId: (session?.user as { id: string }).id,
-          barcodes: validItems.map((item) => ({
-            ...item,
-            purchasePrice: Number(item.purchasePrice),
-            quantity: Number(item.quantity) || 1,
-            currentState: "new",
-          })),
-        },
-        {
-          onSuccess: () => {
-            toast.success(`${validItems.length} items added successfully`);
-            setBulkItems([
-              {
-                code: "",
-                imeiNumber: "",
-                purchasePrice: 0,
-                quantity: 1,
-                currentState: "new",
-              },
-            ]);
-            onClose();
-          },
-          // onError: (error: any) => {
-          //   toast.error(
-          //     error?.response?.data?.message || "Failed to add items in bulk",
-          //   );
-          // },
-        },
-      );
-    } else {
-      toast.error("User not authenticated");
+    if (!session?.user?.id) {
+      toast.error("User session not found");
+      return;
     }
+
+    handleCreateFromBarcodeBulk(
+      {
+        userId: session.user.id,
+        barcodes: validItems,
+      },
+      {
+        onSuccess: () => {
+          toast.success("Bulk inventory added successfully");
+          onClose();
+        },
+        onError: (error: unknown) => {
+          const apiError = error as {
+            response?: { data?: { message?: string } };
+          };
+          toast.error(
+            apiError?.response?.data?.message || "Bulk upload failed",
+          );
+        },
+      },
+    );
   };
 
-  const isPending =
-    isCreating ||
-    isUpdating ||
-    isCreatingFromBarcode ||
-    isCreatingFromBarcodeBulk;
+  const { mutate: createItem, isPending: isCreating } = useCreateInventory();
+  const {
+    mutate: handleCreateFromBarcodeBulk,
+    isPending: isCreatingFromBarcodeBulk,
+  } = useCreateFromBarcodeBulk();
+  const { mutate: updateItem, isPending: isUpdating } = useUpdateInventory();
+  const { mutate: handleCreateFromBarcode, isPending: isCreatingFromBarcode } =
+    useCreateFromBarcode();
+  const { data: session } = useSession();
+  const [scanResultModalData, setScanResultModalData] =
+    useState<ScanResultData | null>(null);
+  const isPending = isCreating || isUpdating || isCreatingFromBarcode;
 
   const form = useForm<CreateInventoryInput>({
     resolver: zodResolver(CreateInventorySchema),
@@ -292,6 +288,24 @@ export function InventoryFormModal({
             : (item.userId ?? ""),
         image: undefined, // Reset image on edit
       });
+
+      // Check if brand is custom
+      if (item.brand && !BRANDS.includes(item.brand)) {
+        setIsCustomBrand(true);
+      } else {
+        setIsCustomBrand(false);
+      }
+
+      // Check if condition is custom
+      if (
+        item.currentState &&
+        item.currentState !== "new" &&
+        item.currentState !== "good condition"
+      ) {
+        setIsCustomCondition(true);
+      } else {
+        setIsCustomCondition(false);
+      }
     } else {
       form.reset({
         itemName: "",
@@ -317,6 +331,8 @@ export function InventoryFormModal({
         userId: "",
         image: undefined,
       });
+      setIsCustomBrand(false);
+      setIsCustomCondition(false);
     }
   }, [item, form, isOpen, forceType]);
 
@@ -357,8 +373,23 @@ export function InventoryFormModal({
           onError: () => toast.error("Update failed"),
         },
       );
+    } else if (scannedItemId) {
+      updateItem(
+        { id: scannedItemId, input: values },
+        {
+          onSuccess: () => {
+            toast.success("Inventory updated successfully");
+            onClose();
+          },
+          onError: (error: unknown) => {
+            const apiError = error as {
+              response?: { data?: { message?: string } };
+            };
+            toast.error(apiError?.response?.data?.message || "Update failed");
+          },
+        },
+      );
     } else {
-      console.log("Inventory add form values:", values);
       createItem(
         { ...values, userId: (session?.user as { id: string })?.id ?? "" },
         {
@@ -435,8 +466,9 @@ export function InventoryFormModal({
     setBarcodeDeviceImagePreview(null);
   };
 
-  const handleManualBarcodeSubmit = () => {
-    if (!manualBarcode.trim()) {
+  const handleManualBarcodeSubmit = (codeOverride?: string) => {
+    const code = codeOverride || manualBarcode;
+    if (!code.trim()) {
       toast.error("Please enter a barcode or IMEI");
       return;
     }
@@ -444,7 +476,7 @@ export function InventoryFormModal({
     if ((session?.user as { id: string })?.id) {
       handleCreateFromBarcode(
         {
-          code: manualBarcode.trim(),
+          code: code.trim(),
           userId: (session?.user as { id: string }).id,
           imeiNumber: barcodeImei || undefined,
           purchasePrice: barcodePurchasePrice
@@ -454,9 +486,93 @@ export function InventoryFormModal({
           image: barcodeDeviceImage || undefined,
         },
         {
-          onSuccess: (data) => {
-            setScanResultModalData(data);
-            toast.success("Device found and added successfully");
+          onSuccess: (data: {
+            data: {
+              result?: Record<string, unknown>;
+              productDetails?: string;
+              aiDescription?: string;
+            };
+          }) => {
+            // Auto-fill form fields from API response
+            // Extract the actual item data from the response
+            const deviceData = (data?.data?.result ||
+              data?.data ||
+              data) as Record<string, unknown> & { _id?: string };
+            if (!deviceData) return;
+
+            if (deviceData._id) setScannedItemId(deviceData._id);
+
+            // Map all available fields to the form with UI update flags
+            const options = { shouldValidate: true, shouldDirty: true };
+
+            // Helper to set value with aliases
+            const setVal = (key: string, value: unknown) => {
+              if (value === undefined || value === null || value === "") return;
+
+              // Direct mapping - use a safer cast than 'any'
+              const fieldName = key as keyof CreateInventoryInput;
+              if (key in form.getValues()) {
+                form.setValue(fieldName, value as never, options);
+
+                // Handle custom brand state
+                if (key === "brand") {
+                  if (typeof value === "string" && !BRANDS.includes(value)) {
+                    setIsCustomBrand(true);
+                  } else {
+                    setIsCustomBrand(false);
+                  }
+                }
+
+                // Handle custom condition state
+                if (key === "currentState") {
+                  if (
+                    typeof value === "string" &&
+                    value !== "new" &&
+                    value !== "good condition"
+                  ) {
+                    setIsCustomCondition(true);
+                  } else {
+                    setIsCustomCondition(false);
+                  }
+                }
+              }
+
+              // Aliases for common variations
+              if (key === "name" || key === "itemName") {
+                form.setValue("itemName", value as string, options);
+              }
+              if (key === "model" || key === "modelNumber") {
+                form.setValue("modelNumber", value as string, options);
+              }
+              if (key === "price" || key === "expectedPrice") {
+                form.setValue("expectedPrice", Number(value), options);
+              }
+              if (key === "imei" || key === "imeiNumber") {
+                form.setValue("imeiNumber", value as string, options);
+              }
+            };
+
+            // Map result fields
+            Object.entries(deviceData).forEach(([key, value]) => {
+              setVal(key, value);
+            });
+
+            // Map top-level productDetails and aiDescription if result ones are missing
+            if (
+              data?.data?.productDetails &&
+              !form.getValues("productDetails")
+            ) {
+              form.setValue(
+                "productDetails",
+                data.data.productDetails,
+                options,
+              );
+            }
+            if (data?.data?.aiDescription && !form.getValues("aiDescription")) {
+              form.setValue("aiDescription", data.data.aiDescription, options);
+            }
+
+            toast.success("Device details auto-populated! Please review.");
             setManualBarcode("");
           },
           onError: (error: unknown) => {
@@ -478,6 +594,7 @@ export function InventoryFormModal({
     if (!isOpen) {
       stopScanning();
       resetBarcodeFields();
+      setScannedItemId(null);
     }
   }, [isOpen]);
 
@@ -500,6 +617,7 @@ export function InventoryFormModal({
       const decodedText = await html5QrCode.scanFile(file, true);
       setManualBarcode(decodedText);
       toast.success("Barcode extracted successfully");
+      handleManualBarcodeSubmit(decodedText);
       setTimeout(() => setBarcodeImagePreview(null), 2000);
     } catch (err) {
       console.error("Scan error", err);
@@ -511,17 +629,11 @@ export function InventoryFormModal({
     }
   };
 
-  const handleBulkFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setBulkFile(file);
-  };
-
   const renderFormContent = () => (
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit, onError)}
-        className="space-y-8"
+        className="space-y-12"
       >
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-20 gap-y-10">
           {/* Left Column: Core Identity & Specs */}
@@ -557,9 +669,47 @@ export function InventoryFormModal({
                           </div>
                           <Input
                             placeholder="e.g. iPhone X"
-                            className="pl-14 pr-4 bg-slate-50/80 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-[20px] h-[56px] font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:bg-white dark:focus-visible:bg-slate-950 focus-visible:ring-4 focus-visible:ring-[#84CC16]/15 focus-visible:border-[#84CC16] transition-all shadow-sm"
+                            className="pl-14 pr-32 bg-slate-50/80 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-[20px] h-[56px] font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:bg-white dark:focus-visible:bg-slate-950 focus-visible:ring-4 focus-visible:ring-[#84CC16]/15 focus-visible:border-[#84CC16] transition-all shadow-sm"
                             {...field}
                           />
+                          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                barcodeImageInputRef.current?.click()
+                              }
+                              className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-400 hover:text-[#84CC16] hover:bg-[#84CC16]/10 transition-all"
+                              title="Upload Barcode"
+                            >
+                              <Camera className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleManualBarcodeSubmit(field.value)
+                              }
+                              disabled={isCreatingFromBarcode}
+                              className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-400 hover:text-[#84CC16] hover:bg-[#84CC16]/10 transition-all"
+                              title="Scan/Fetch Device Info"
+                            >
+                              {isCreatingFromBarcode ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Scan className="w-4 h-4" />
+                              )}
+                            </button>
+                          </div>
+                          <input
+                            type="file"
+                            ref={barcodeImageInputRef}
+                            onChange={handleBarcodeImageUpload}
+                            accept="image/*"
+                            className="hidden"
+                          />
+                          <div
+                            id="barcode-reader-hidden"
+                            className="hidden"
+                          ></div>
                         </div>
                       </FormControl>
                       <FormMessage className="text-[10px] uppercase tracking-wider font-bold" />
@@ -606,18 +756,70 @@ export function InventoryFormModal({
                       <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-white mb-2 block ml-1">
                         Brand
                       </FormLabel>
-                      <FormControl>
-                        <div className="relative group">
-                          <div className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white dark:bg-slate-800 rounded-[14px] flex items-center justify-center shadow-sm border border-slate-100 dark:border-slate-700 group-focus-within:border-[#84CC16]/30 group-focus-within:bg-[#84CC16]/5 transition-all z-10">
-                            <Package className="w-4 h-4 text-slate-400 group-focus-within:text-[#84CC16] transition-colors" />
+                      <div className="space-y-3">
+                        {!isCustomBrand ? (
+                          <Select
+                            onValueChange={(val) => {
+                              if (val === "Other") {
+                                setIsCustomBrand(true);
+                                field.onChange("");
+                              } else {
+                                field.onChange(val);
+                              }
+                            }}
+                            value={
+                              field.value && BRANDS.includes(field.value)
+                                ? field.value
+                                : field.value
+                                  ? "Other"
+                                  : ""
+                            }
+                          >
+                            <FormControl>
+                              <SelectTrigger className="group bg-slate-50/80 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-[20px] h-[56px] font-bold text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-950 focus:ring-4 focus:ring-[#84CC16]/15 focus:border-[#84CC16] transition-all shadow-sm px-2">
+                                <div className="flex items-center gap-3 w-full">
+                                  <div className="w-10 h-10 rounded-[14px] flex items-center justify-center shadow-sm border border-slate-100 group-focus:border-[#84CC16]/30 group-focus:bg-[#84CC16]/5 transition-all shrink-0">
+                                    <Package className="w-4 h-4 text-slate-400 group-focus:text-[#84CC16] transition-colors" />
+                                  </div>
+                                  <SelectValue placeholder="Select Brand" />
+                                </div>
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent className="rounded-2xl border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl p-1">
+                              {BRANDS.map((brand) => (
+                                <SelectItem
+                                  key={brand}
+                                  value={brand}
+                                  className="font-bold rounded-xl focus:bg-[#84CC16]/10 focus:text-[#84CC16] cursor-pointer py-3 dark:text-white"
+                                >
+                                  {brand}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <div className="relative group animate-in fade-in slide-in-from-left-2 duration-300">
+                            <div className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white dark:bg-slate-800 rounded-[14px] flex items-center justify-center shadow-sm border border-slate-100 dark:border-slate-700 group-focus-within:border-[#84CC16]/30 group-focus-within:bg-[#84CC16]/5 transition-all z-10">
+                              <Package className="w-4 h-4 text-slate-400 group-focus-within:text-[#84CC16] transition-colors" />
+                            </div>
+                            <Input
+                              placeholder="Enter custom brand..."
+                              className="pl-14 pr-24 bg-slate-50/80 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-[20px] h-[56px] font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:bg-white dark:focus-visible:bg-slate-950 focus-visible:ring-4 focus-visible:ring-[#84CC16]/15 focus-visible:border-[#84CC16] transition-all shadow-sm"
+                              {...field}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsCustomBrand(false);
+                                field.onChange("Apple");
+                              }}
+                              className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-[#84CC16] hover:bg-[#84CC16]/10 rounded-xl transition-all"
+                            >
+                              Reset
+                            </button>
                           </div>
-                          <Input
-                            placeholder="Apple"
-                            className="pl-14 pr-4 bg-slate-50/80 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-[20px] h-[56px] font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:bg-white dark:focus-visible:bg-slate-950 focus-visible:ring-4 focus-visible:ring-[#84CC16]/15 focus-visible:border-[#84CC16] transition-all shadow-sm"
-                            {...field}
-                          />
-                        </div>
-                      </FormControl>
+                        )}
+                      </div>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -683,33 +885,6 @@ export function InventoryFormModal({
                           </div>
                           <Input
                             placeholder="64GB"
-                            className="pl-14 pr-4 bg-slate-50/80 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-[20px] h-[56px] font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:bg-white dark:focus-visible:bg-slate-950 focus-visible:ring-4 focus-visible:ring-[#84CC16]/15 focus-visible:border-[#84CC16] transition-all shadow-sm"
-                            {...field}
-                          />
-                        </div>
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-
-                {/* Size */}
-                <FormField
-                  control={
-                    form.control as unknown as Control<CreateInventoryInput>
-                  }
-                  name="size"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-white mb-2 block ml-1">
-                        Screen Size
-                      </FormLabel>
-                      <FormControl>
-                        <div className="relative group">
-                          <div className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white dark:bg-slate-800 rounded-[14px] flex items-center justify-center shadow-sm border border-slate-100 dark:border-slate-700 group-focus-within:border-[#84CC16]/30 group-focus-within:bg-[#84CC16]/5 transition-all z-10">
-                            <Maximize2 className="w-4 h-4 text-slate-400 group-focus-within:text-[#84CC16] transition-colors" />
-                          </div>
-                          <Input
-                            placeholder="5.8"
                             className="pl-14 pr-4 bg-slate-50/80 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-[20px] h-[56px] font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:bg-white dark:focus-visible:bg-slate-950 focus-visible:ring-4 focus-visible:ring-[#84CC16]/15 focus-visible:border-[#84CC16] transition-all shadow-sm"
                             {...field}
                           />
@@ -918,60 +1093,6 @@ export function InventoryFormModal({
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                {/* Supplier ID */}
-                <FormField
-                  control={
-                    form.control as unknown as Control<CreateInventoryInput>
-                  }
-                  name="supplierId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-white mb-2 block ml-1">
-                        Supplier ID
-                      </FormLabel>
-                      <FormControl>
-                        <div className="relative group">
-                          <div className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white dark:bg-slate-800 rounded-[14px] flex items-center justify-center shadow-sm border border-slate-100 dark:border-slate-700 group-focus-within:border-[#84CC16]/30 group-focus-within:bg-[#84CC16]/5 transition-all z-10">
-                            <Users className="w-4 h-4 text-slate-400 group-focus-within:text-[#84CC16] transition-colors" />
-                          </div>
-                          <Input
-                            placeholder="Supplier..."
-                            className="pl-14 pr-4 bg-slate-50/80 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-[20px] h-[56px] font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:bg-white dark:focus-visible:bg-slate-950 focus-visible:ring-4 focus-visible:ring-[#84CC16]/15 focus-visible:border-[#84CC16] transition-all shadow-sm"
-                            {...field}
-                          />
-                        </div>
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-
-                {/* Store ID */}
-                <FormField
-                  control={
-                    form.control as unknown as Control<CreateInventoryInput>
-                  }
-                  name="storeId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-white mb-2 block ml-1">
-                        Store ID
-                      </FormLabel>
-                      <FormControl>
-                        <div className="relative group">
-                          <div className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white dark:bg-slate-800 rounded-[14px] flex items-center justify-center shadow-sm border border-slate-100 dark:border-slate-700 group-focus-within:border-[#84CC16]/30 group-focus-within:bg-[#84CC16]/5 transition-all z-10">
-                            <Store className="w-4 h-4 text-slate-400 group-focus-within:text-[#84CC16] transition-colors" />
-                          </div>
-                          <Input
-                            placeholder="Store..."
-                            className="pl-14 pr-4 bg-slate-50/80 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-[20px] h-[56px] font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:bg-white dark:focus-visible:bg-slate-950 focus-visible:ring-4 focus-visible:ring-[#84CC16]/15 focus-visible:border-[#84CC16] transition-all shadow-sm"
-                            {...field}
-                          />
-                        </div>
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-
                 {/* Group Key */}
                 <FormField
                   control={
@@ -1010,36 +1131,78 @@ export function InventoryFormModal({
                       <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-white mb-2 block ml-1">
                         Condition
                       </FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                        value={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger className="group bg-slate-50/80 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-[20px] h-[56px] font-bold text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-950 focus:ring-4 focus:ring-[#84CC16]/15 focus:border-[#84CC16] transition-all shadow-sm px-2">
-                            <div className="flex items-center gap-3 w-full">
-                              <div className="w-10 h-10 rounded-[14px] flex items-center justify-center shadow-sm border border-slate-100 group-focus:border-[#84CC16]/30 group-focus:bg-[#84CC16]/5 transition-all shrink-0">
-                                <Activity className="w-4 h-4 text-slate-400 group-focus:text-[#84CC16] transition-colors" />
-                              </div>
-                              <SelectValue placeholder="Condition" />
+                      <div className="space-y-3">
+                        {!isCustomCondition ? (
+                          <Select
+                            onValueChange={(val) => {
+                              if (val === "Other") {
+                                setIsCustomCondition(true);
+                                field.onChange("");
+                              } else {
+                                field.onChange(val);
+                              }
+                            }}
+                            value={
+                              field.value === "new" ||
+                              field.value === "good condition"
+                                ? field.value
+                                : "Other"
+                            }
+                          >
+                            <FormControl>
+                              <SelectTrigger className="group bg-slate-50/80 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-[20px] h-[56px] font-bold text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-950 focus:ring-4 focus:ring-[#84CC16]/15 focus:border-[#84CC16] transition-all shadow-sm px-2">
+                                <div className="flex items-center gap-3 w-full">
+                                  <div className="w-10 h-10 rounded-[14px] flex items-center justify-center shadow-sm border border-slate-100 group-focus:border-[#84CC16]/30 group-focus:bg-[#84CC16]/5 transition-all shrink-0">
+                                    <Activity className="w-4 h-4 text-slate-400 group-focus:text-[#84CC16] transition-colors" />
+                                  </div>
+                                  <SelectValue placeholder="Condition" />
+                                </div>
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent className="rounded-2xl border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl p-1">
+                              <SelectItem
+                                value="new"
+                                className="font-bold rounded-xl focus:bg-[#84CC16]/10 focus:text-[#84CC16] cursor-pointer py-3 dark:text-white "
+                              >
+                                Brand New
+                              </SelectItem>
+                              <SelectItem
+                                value="good condition"
+                                className="font-bold rounded-xl focus:bg-[#84CC16]/10 focus:text-[#84CC16] cursor-pointer py-3 dark:text-white "
+                              >
+                                Good Condition
+                              </SelectItem>
+                              <SelectItem
+                                value="Other"
+                                className="font-bold rounded-xl focus:bg-[#84CC16]/10 focus:text-[#84CC16] cursor-pointer py-3 dark:text-white "
+                              >
+                                Other (Custom)
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <div className="relative group animate-in fade-in slide-in-from-left-2 duration-300">
+                            <div className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white dark:bg-slate-800 rounded-[14px] flex items-center justify-center shadow-sm border border-slate-100 dark:border-slate-700 group-focus-within:border-[#84CC16]/30 group-focus-within:bg-[#84CC16]/5 transition-all z-10">
+                              <Activity className="w-4 h-4 text-slate-400 group-focus-within:text-[#84CC16] transition-colors" />
                             </div>
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent className="rounded-2xl border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl p-1">
-                          <SelectItem
-                            value="new"
-                            className="font-bold rounded-xl focus:bg-[#84CC16]/10 focus:text-[#84CC16] cursor-pointer py-3 dark:text-white "
-                          >
-                            Brand New
-                          </SelectItem>
-                          <SelectItem
-                            value="good condition"
-                            className="font-bold rounded-xl focus:bg-[#84CC16]/10 focus:text-[#84CC16] cursor-pointer py-3 dark:text-white "
-                          >
-                            Good Condition
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
+                            <Input
+                              placeholder="e.g. Excellent, Refurbished..."
+                              className="pl-14 pr-24 bg-slate-50/80 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-[20px] h-[56px] font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:bg-white dark:focus-visible:bg-slate-950 focus-visible:ring-4 focus-visible:ring-[#84CC16]/15 focus-visible:border-[#84CC16] transition-all shadow-sm"
+                              {...field}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsCustomCondition(false);
+                                field.onChange("new");
+                              }}
+                              className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-[#84CC16] hover:bg-[#84CC16]/10 rounded-xl transition-all"
+                            >
+                              Reset
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </FormItem>
                   )}
                 />
@@ -1285,310 +1448,32 @@ export function InventoryFormModal({
 
           <div className="p-8 lg:p-12 bg-white dark:bg-slate-950 overflow-y-auto flex-1 custom-scrollbar">
             {!isEditMode ? (
-              <Tabs defaultValue="single" className="w-full">
-                {forceType !== "sold" && (
-                  <TabsList className="grid w-full max-w-lg grid-cols-3 bg-slate-100/70 dark:bg-slate-900/50 p-1.5 h-[56px] rounded-[20px] mb-8 mx-auto relative z-10">
-                    <TabsTrigger
-                      value="single"
-                      className="rounded-[14px] font-bold uppercase tracking-wider text-[11px] h-full data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-[#84CC16] data-[state=active]:shadow-sm transition-all"
-                    >
-                      <Smartphone className="w-4 h-4 mr-2" />
-                      <span className="hidden sm:inline">Manual Entry</span>
-                      <span className="sm:hidden">Manual</span>
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="barcode"
-                      className="rounded-[14px] font-bold uppercase tracking-wider text-[11px] h-full data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-[#84CC16] data-[state=active]:shadow-sm transition-all"
-                    >
-                      <Barcode className="w-4 h-4 mr-2" />
-                      <span className="hidden sm:inline">Scan Barcode</span>
-                      <span className="sm:hidden">Scan</span>
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="upload"
-                      className="rounded-[14px] font-bold uppercase tracking-wider text-[11px] h-full data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-[#84CC16] data-[state=active]:shadow-sm transition-all"
-                    >
-                      <FileUp className="w-4 h-4 mr-2" />
-                      <span className="hidden sm:inline">File Upload</span>
-                      <span className="sm:hidden">Upload</span>
-                    </TabsTrigger>
-                  </TabsList>
-                )}
+              <Tabs
+                value={activeTab}
+                onValueChange={setActiveTab}
+                className="w-full"
+              >
+                <TabsList className="grid w-full grid-cols-2 mb-8 bg-slate-100/50 dark:bg-slate-900/50 p-1 rounded-2xl h-14">
+                  <TabsTrigger
+                    value="manual"
+                    className="rounded-xl font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-[#84CC16] data-[state=active]:shadow-sm transition-all"
+                  >
+                    Add Item
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="upload"
+                    className="rounded-xl font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-[#84CC16] data-[state=active]:shadow-sm transition-all"
+                  >
+                    Bulk Upload
+                  </TabsTrigger>
+                </TabsList>
 
                 <TabsContent
-                  value="single"
+                  value="manual"
                   className="mt-0 border-none p-0 outline-none focus-visible:ring-0"
                 >
-                  {renderFormContent()}
+                  <div className="w-full">{renderFormContent()}</div>
                 </TabsContent>
-
-                {forceType !== "sold" && (
-                  <TabsContent
-                    value="barcode"
-                    className="mt-0 border-none p-0 outline-none focus-visible:ring-0"
-                  >
-                    <div className="flex flex-col items-center justify-center py-16 border-2 border-dashed border-slate-200 rounded-[32px] bg-slate-50/50 relative overflow-hidden min-h-[400px]">
-                      {/* ... rest of barcode content ... */}
-                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-[#84CC16]/5 rounded-full blur-[80px] pointer-events-none" />
-
-                      {!isCameraActive ? (
-                        <>
-                          {barcodeImagePreview ? (
-                            <div className="relative w-64 h-48 rounded-[24px] overflow-hidden shadow-2xl mb-8 z-10 border-4 border-white group">
-                              <NextImage
-                                src={barcodeImagePreview}
-                                alt="Barcode Preview"
-                                fill
-                                className="object-cover transition-transform duration-500 group-hover:scale-110"
-                              />
-                              <div className="absolute inset-0 bg-slate-900/20 group-hover:bg-slate-900/40 transition-colors" />
-                              <button
-                                type="button"
-                                onClick={() => setBarcodeImagePreview(null)}
-                                className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm text-slate-900 rounded-full p-1.5 hover:bg-white hover:text-red-500 transition-all shadow-md z-20"
-                              >
-                                <X className="w-4 h-4" />
-                              </button>
-                              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-[#84CC16] text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg animate-pulse z-20 whitespace-nowrap">
-                                Scanning...
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="relative w-24 h-24 rounded-[28px] bg-white shadow-xl shadow-slate-200/50 flex items-center justify-center mb-8 border border-slate-100 z-10">
-                              <Barcode className="w-10 h-10 text-[#84CC16]" />
-                              <div className="absolute inset-0 border-2 border-[#84CC16] rounded-[28px] opacity-0 animate-[ping_2s_cubic-bezier(0,0,0.2,1)_infinite]" />
-                            </div>
-                          )}
-
-                          <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 mb-3 z-10">
-                            {barcodeImagePreview
-                              ? "Analyzing Image"
-                              : "Scan Barcode"}
-                          </h3>
-                          <p className="text-slate-500 font-medium text-center max-w-[320px] text-sm leading-relaxed mb-8 z-10 dark:text-white ">
-                            {barcodeImagePreview
-                              ? "Please wait while we extract the barcode data from your uploaded photo."
-                              : "Choose to scan via live camera or upload a photo, or enter it manually below."}
-                          </p>
-
-                          {/* Manual Barcode Input */}
-                          <div className="w-full max-w-sm mb-6 z-10 px-4">
-                            <div className="relative group">
-                              <div className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white dark:bg-slate-800 rounded-[14px] flex items-center justify-center shadow-sm border border-slate-100 dark:border-slate-700 group-focus-within:border-[#84CC16]/30 group-focus-within:bg-[#84CC16]/5 transition-all z-10">
-                                <Hash className="w-4 h-4 text-slate-400 group-focus-within:text-[#84CC16] transition-colors" />
-                              </div>
-                              <input
-                                type="text"
-                                placeholder="Type barcode or IMEI..."
-                                className="w-full pl-14 pr-14 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 rounded-[20px] h-[56px] font-bold text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:bg-white dark:focus-visible:bg-slate-950 focus-visible:ring-4 focus-visible:ring-[#84CC16]/15 focus-visible:border-[#84CC16] outline-none transition-all shadow-sm"
-                                value={manualBarcode}
-                                onChange={(e) =>
-                                  setManualBarcode(e.target.value)
-                                }
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter") {
-                                    e.preventDefault();
-                                    handleManualBarcodeSubmit();
-                                  }
-                                }}
-                              />
-                              <button
-                                type="button"
-                                onClick={handleManualBarcodeSubmit}
-                                disabled={
-                                  isCreatingFromBarcode || !manualBarcode.trim()
-                                }
-                                className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-slate-900 text-white rounded-[14px] flex items-center justify-center hover:bg-slate-800 disabled:bg-slate-200 disabled:cursor-not-allowed transition-all z-10"
-                              >
-                                {isCreatingFromBarcode ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                  <Plus className="w-5 h-5" />
-                                )}
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* Additional Barcode Data Fields */}
-                          <div className="w-full max-w-sm grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8 z-10 px-4">
-                            <div className="space-y-1.5">
-                              <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1 dark:text-white">
-                                IMEI Number
-                              </label>
-                              <input
-                                type="text"
-                                placeholder="Optional..."
-                                className="w-full px-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl h-[44px] font-bold text-xs outline-none focus:ring-2 focus:ring-[#84CC16]/20 transition-all"
-                                value={barcodeImei}
-                                onChange={(e) => setBarcodeImei(e.target.value)}
-                              />
-                            </div>
-                            <div className="space-y-1.5">
-                              <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">
-                                Cost Price ($)
-                              </label>
-                              <input
-                                type="number"
-                                placeholder="Optional..."
-                                className="w-full px-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl h-[44px] font-bold text-xs outline-none focus:ring-2 focus:ring-[#84CC16]/20 transition-all"
-                                value={barcodePurchasePrice}
-                                onChange={(e) =>
-                                  setBarcodePurchasePrice(e.target.value)
-                                }
-                              />
-                            </div>
-                            <div className="space-y-1.5 sm:col-span-2">
-                              <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1 dark:text-white">
-                                Condition
-                              </label>
-                              <Select
-                                onValueChange={setBarcodeCondition}
-                                value={barcodeCondition}
-                              >
-                                <SelectTrigger className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl h-[44px] font-bold text-xs">
-                                  <SelectValue placeholder="Select Condition" />
-                                </SelectTrigger>
-                                <SelectContent className="rounded-xl">
-                                  <SelectItem value="new" className="font-bold">
-                                    Brand New
-                                  </SelectItem>
-                                  <SelectItem
-                                    value="good condition"
-                                    className="font-bold"
-                                  >
-                                    Good Condition
-                                  </SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-
-                            <div className="sm:col-span-2 space-y-1.5">
-                              <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1 dark:text-white">
-                                Device Photo
-                              </label>
-                              <div
-                                onClick={() =>
-                                  barcodeDeviceImageInputRef.current?.click()
-                                }
-                                className="w-full aspect-[2/1] rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-100/50 dark:hover:bg-slate-900/50 transition-all relative overflow-hidden group"
-                              >
-                                {barcodeDeviceImagePreview ? (
-                                  <NextImage
-                                    src={barcodeDeviceImagePreview}
-                                    alt="Preview"
-                                    fill
-                                    className="object-cover transition-transform group-hover:scale-105"
-                                  />
-                                ) : (
-                                  <>
-                                    <Camera className="w-5 h-5 text-slate-300 mb-1 group-hover:text-[#84CC16] transition-colors" />
-                                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-tighter">
-                                      Upload Device Image
-                                    </span>
-                                  </>
-                                )}
-                                <input
-                                  type="file"
-                                  ref={barcodeDeviceImageInputRef}
-                                  className="hidden"
-                                  accept="image/*"
-                                  onChange={(e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file) {
-                                      setBarcodeDeviceImage(file);
-                                      const reader = new FileReader();
-                                      reader.onloadend = () =>
-                                        setBarcodeDeviceImagePreview(
-                                          reader.result as string,
-                                        );
-                                      reader.readAsDataURL(file);
-                                    }
-                                  }}
-                                />
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center justify-between gap-4 z-10 w-full max-w-sm mt-4">
-                            <div className="flex gap-2">
-                              <Button
-                                onClick={startScanning}
-                                type="button"
-                                size="icon"
-                                variant="secondary"
-                                className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-[#84CC16] hover:bg-[#84CC16]/10 transition-all border border-slate-200 dark:border-slate-700 shadow-sm"
-                                title="Live Scan"
-                              >
-                                <Camera className="w-5 h-5" />
-                              </Button>
-                              <Button
-                                onClick={() =>
-                                  barcodeImageInputRef.current?.click()
-                                }
-                                type="button"
-                                size="icon"
-                                variant="secondary"
-                                className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-[#84CC16] hover:bg-[#84CC16]/10 transition-all border border-slate-200 dark:border-slate-700 shadow-sm"
-                                title="Upload Barcode"
-                              >
-                                <Upload className="w-5 h-5" />
-                                <input
-                                  ref={barcodeImageInputRef}
-                                  type="file"
-                                  accept="image/*"
-                                  className="hidden"
-                                  onChange={handleBarcodeImageUpload}
-                                />
-                              </Button>
-                            </div>
-
-                            <Button
-                              onClick={handleManualBarcodeSubmit}
-                              disabled={
-                                isCreatingFromBarcode || !manualBarcode.trim()
-                              }
-                              type="button"
-                              className="flex-1 h-14 bg-[#84CC16] hover:bg-[#76b813] text-white rounded-[20px] font-black text-[12px] uppercase tracking-widest shadow-lg shadow-lime-500/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
-                            >
-                              {isCreatingFromBarcode ? (
-                                <Loader2 className="w-5 h-5 animate-spin" />
-                              ) : (
-                                <>
-                                  <Plus size={18} strokeWidth={3} />
-                                  <span>Add Device</span>
-                                </>
-                              )}
-                            </Button>
-                          </div>
-                          {/* Hidden div for file scanning */}
-                          <div id="barcode-reader-hidden" className="hidden" />
-                        </>
-                      ) : (
-                        <div className="flex flex-col items-center w-full z-10 px-8">
-                          <div className="relative w-full max-w-sm rounded-[24px] overflow-hidden shadow-2xl border-4 border-slate-900 mb-6 bg-black">
-                            <div
-                              id="barcode-reader"
-                              className="w-full min-h-[300px]"
-                            />
-                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                              <div className="w-[80%] h-[100px] border-2 border-[#84CC16] rounded-xl relative opacity-50">
-                                <div className="absolute top-0 left-0 w-full h-[2px] bg-[#84CC16] shadow-[0_0_10px_#84CC16] animate-[scan_2s_ease-in-out_infinite]" />
-                              </div>
-                            </div>
-                          </div>
-                          <Button
-                            onClick={stopScanning}
-                            type="button"
-                            variant="ghost"
-                            className="font-black text-[12px] uppercase tracking-widest text-red-500 hover:text-red-600 hover:bg-red-50 rounded-2xl h-12 px-8"
-                          >
-                            Stop Scanning
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  </TabsContent>
-                )}
 
                 {forceType !== "sold" && (
                   <TabsContent
@@ -1606,14 +1491,6 @@ export function InventoryFormModal({
                             details below.
                           </p>
                         </div>
-                        <Button
-                          onClick={addBulkRow}
-                          type="button"
-                          className="bg-[#84CC16] hover:bg-[#76b813] text-white rounded-xl px-6 h-12 font-black uppercase tracking-widest shadow-lg shadow-lime-500/20 transition-all flex items-center gap-2"
-                        >
-                          <Plus size={18} strokeWidth={3} />
-                          <span>Add Row</span>
-                        </Button>
                       </div>
 
                       <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
@@ -1622,7 +1499,8 @@ export function InventoryFormModal({
                             key={index}
                             className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-12 gap-4 p-4 bg-white dark:bg-slate-900 rounded-[24px] border border-slate-100 dark:border-slate-800 shadow-sm relative group animate-in fade-in slide-in-from-top-2 duration-300"
                           >
-                            <div className="lg:col-span-4 space-y-1.5">
+                            {/* Barcode */}
+                            <div className="lg:col-span-3 space-y-1.5">
                               <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1 dark:text-slate-500">
                                 Barcode / Code{" "}
                                 <span className="text-red-500">*</span>
@@ -1633,7 +1511,7 @@ export function InventoryFormModal({
                                 </div>
                                 <input
                                   type="text"
-                                  placeholder="Scan or type..."
+                                  placeholder="Scan/Type..."
                                   className="w-full pl-10 pr-4 bg-slate-50/50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 rounded-xl h-[48px] font-bold text-sm outline-none focus:ring-2 focus:ring-[#84CC16]/20 transition-all dark:text-white"
                                   value={item.code}
                                   onChange={(e) =>
@@ -1647,30 +1525,63 @@ export function InventoryFormModal({
                               </div>
                             </div>
 
-                            <div className="lg:col-span-3 space-y-1.5">
+                            {/* Color */}
+                            <div className="lg:col-span-1 space-y-1.5">
                               <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1 dark:text-slate-500">
-                                IMEI Number
+                                Color
                               </label>
-                              <div className="relative">
-                                <div className="absolute left-3 top-1/2 -translate-y-1/2">
-                                  <Hash className="w-4 h-4 text-slate-400" />
-                                </div>
-                                <input
-                                  type="text"
-                                  placeholder="IMEI Number"
-                                  className="w-full pl-10 pr-4 bg-slate-50/50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 rounded-xl h-[48px] font-bold text-sm outline-none focus:ring-2 focus:ring-[#84CC16]/20 transition-all dark:text-white"
-                                  value={item.imeiNumber}
-                                  onChange={(e) =>
-                                    updateBulkItem(
-                                      index,
-                                      "imeiNumber",
-                                      e.target.value,
-                                    )
-                                  }
-                                />
-                              </div>
+                              <input
+                                type="text"
+                                placeholder="Color"
+                                className="w-full px-3 bg-slate-50/50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 rounded-xl h-[48px] font-bold text-sm outline-none focus:ring-2 focus:ring-[#84CC16]/20 transition-all dark:text-white"
+                                value={item.color}
+                                onChange={(e) =>
+                                  updateBulkItem(index, "color", e.target.value)
+                                }
+                              />
                             </div>
 
+                            {/* Storage */}
+                            <div className="lg:col-span-1 space-y-1.5">
+                              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1 dark:text-slate-500">
+                                Size
+                              </label>
+                              <input
+                                type="text"
+                                placeholder="Size"
+                                className="w-full px-3 bg-slate-50/50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 rounded-xl h-[48px] font-bold text-sm outline-none focus:ring-2 focus:ring-[#84CC16]/20 transition-all dark:text-white"
+                                value={item.storage}
+                                onChange={(e) =>
+                                  updateBulkItem(
+                                    index,
+                                    "storage",
+                                    e.target.value,
+                                  )
+                                }
+                              />
+                            </div>
+
+                            {/* Supplier Condition */}
+                            <div className="lg:col-span-3 space-y-1.5">
+                              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1 dark:text-slate-500">
+                                Supplier Condition
+                              </label>
+                              <input
+                                type="text"
+                                placeholder="e.g. New, Used, Mint"
+                                className="w-full px-3 bg-slate-50/50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 rounded-xl h-[48px] font-bold text-sm outline-none focus:ring-2 focus:ring-[#84CC16]/20 transition-all dark:text-white"
+                                value={item.currentState}
+                                onChange={(e) =>
+                                  updateBulkItem(
+                                    index,
+                                    "currentState",
+                                    e.target.value,
+                                  )
+                                }
+                              />
+                            </div>
+
+                            {/* Price */}
                             <div className="lg:col-span-2 space-y-1.5">
                               <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1 dark:text-slate-500">
                                 Price ($)
@@ -1688,45 +1599,50 @@ export function InventoryFormModal({
                                     updateBulkItem(
                                       index,
                                       "purchasePrice",
-                                      e.target.value,
+                                      Number(e.target.value),
                                     )
                                   }
                                 />
                               </div>
                             </div>
 
-                            <div className="lg:col-span-2 space-y-1.5">
+                            {/* Quantity */}
+                            <div className="lg:col-span-1 space-y-1.5">
                               <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1 dark:text-slate-500">
-                                Quantity
+                                Qty
                               </label>
-                              <div className="relative">
-                                <div className="absolute left-3 top-1/2 -translate-y-1/2">
-                                  <Package className="w-4 h-4 text-slate-400" />
-                                </div>
-                                <input
-                                  type="number"
-                                  placeholder="1"
-                                  className="w-full pl-10 pr-4 bg-slate-50/50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 rounded-xl h-[48px] font-bold text-sm outline-none focus:ring-2 focus:ring-[#84CC16]/20 transition-all dark:text-white"
-                                  value={item.quantity || ""}
-                                  onChange={(e) =>
-                                    updateBulkItem(
-                                      index,
-                                      "quantity",
-                                      e.target.value,
-                                    )
-                                  }
-                                />
-                              </div>
+                              <input
+                                type="number"
+                                placeholder="1"
+                                className="w-full px-3 bg-slate-50/50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 rounded-xl h-[48px] font-bold text-sm outline-none focus:ring-2 focus:ring-[#84CC16]/20 transition-all dark:text-white"
+                                value={item.quantity || ""}
+                                onChange={(e) =>
+                                  updateBulkItem(
+                                    index,
+                                    "quantity",
+                                    Number(e.target.value),
+                                  )
+                                }
+                              />
                             </div>
 
-                            <div className="lg:col-span-1 flex items-end justify-center pb-1">
+                            {/* Actions */}
+                            <div className="lg:col-span-1 flex items-end justify-center gap-2 pb-1">
                               <button
                                 type="button"
                                 onClick={() => removeBulkRow(index)}
-                                className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all"
+                                className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all"
                                 title="Remove row"
                               >
-                                <X className="w-5 h-5" />
+                                <X className="w-4 h-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={addBulkRow}
+                                className="w-9 h-9 rounded-xl flex items-center justify-center bg-[#84CC16]/10 text-[#84CC16] hover:bg-[#84CC16] hover:text-white transition-all shadow-sm"
+                                title="Add another row"
+                              >
+                                <Plus className="w-4 h-4" strokeWidth={3} />
                               </button>
                             </div>
                           </div>

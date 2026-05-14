@@ -13,14 +13,11 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import { useMyInventory, useDeleteInventory } from "../hooks/useInventory";
-import {
-  useMySoldProducts,
-  useDeleteSoldProduct,
-} from "../hooks/useSoldProducts";
+
 import { InventorySkeleton } from "./skeletons/InventorySkeleton";
 import { InventoryFormModal } from "./modals/InventoryFormModal";
 import { InventoryDetailsModal } from "./modals/InventoryDetailsModal";
-import type { InventoryItem, SoldProduct } from "../types";
+import type { InventoryItem } from "../types";
 import { toast } from "sonner";
 import {
   DropdownMenu,
@@ -31,9 +28,7 @@ import {
 
 export default function Inventory() {
   const { data: inventoryData, isLoading, isError } = useMyInventory();
-  const { data: soldData, isLoading: isSoldLoading } = useMySoldProducts();
   const { mutate: deleteItem } = useDeleteInventory();
-  const { mutate: deleteSold } = useDeleteSoldProduct();
 
   console.log(inventoryData);
 
@@ -42,7 +37,6 @@ export default function Inventory() {
       (item: InventoryItem) => item.type === "inventory",
     );
   }, [inventoryData]);
-  const soldItems = useMemo(() => soldData?.data || [], [soldData]);
 
   // Calculate total stock quantity
   const totalQuantity = useMemo(() => {
@@ -84,16 +78,7 @@ export default function Inventory() {
     });
   };
 
-  const handleDeleteSold = (id: string) => {
-    if (window.confirm("Are you sure you want to delete this sold record?")) {
-      deleteSold(id, {
-        onSuccess: () => toast.success("Sold record deleted"),
-        onError: () => toast.error("Delete failed"),
-      });
-    }
-  };
-
-  if (isLoading || isSoldLoading) return <InventorySkeleton />;
+  if (isLoading) return <InventorySkeleton />;
   if (isError)
     return (
       <div className="p-10 text-center">
@@ -279,157 +264,6 @@ export default function Inventory() {
             </p>
           </div>
         )}
-      </div>
-
-      {/* Sold Items Section */}
-      <div className="space-y-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-black text-[#0F172A] tracking-tight dark:text-white">
-              Sold Items
-            </h2>
-            <p className="text-[11px] font-bold text-[#94A3B8] uppercase tracking-widest mt-1 dark:text-gray-400">
-              History of your sales and pending payments
-            </p>
-          </div>
-          <button
-            onClick={() => {
-              setEditingItem(null);
-              setFormForceType("sold");
-              setIsFormOpen(true);
-            }}
-            className="flex items-center gap-2 px-6 py-3 bg-[#84CC16] text-white font-black rounded-xl hover:bg-[#76b813] transition shadow-lg shadow-lime-500/20 active:scale-95 cursor-pointer"
-          >
-            <Plus size={18} strokeWidth={3} />
-            <span>Add Sold Items</span>
-          </button>
-        </div>
-
-        <div className="bg-card  rounded-[40px] border border-border shadow-sm overflow-hidden overflow-x-auto ">
-          <table className="w-full text-left border-collapse min-w-[1000px] dark:text-white">
-            <thead>
-              <tr className=" border-b border-border bg-surface">
-                <th className="px-8 py-5 text-[10px] font-black text-[#94A3B8] dark:text-white uppercase tracking-widest">
-                  Item Name
-                </th>
-                <th className="px-6 py-5 text-[10px] font-black text-[#94A3B8] dark:text-white uppercase tracking-widest">
-                  IMEI Number
-                </th>
-                <th className="px-6 py-5 text-[10px] font-black text-[#94A3B8] dark:text-white uppercase tracking-widest">
-                  Date Sold
-                </th>
-                <th className="px-6 py-5 text-[10px] font-black text-[#94A3B8] dark:text-white uppercase tracking-widest">
-                  Purchase Price
-                </th>
-                <th className="px-6 py-5 text-[10px] font-black text-[#94A3B8] dark:text-white uppercase tracking-widest">
-                  Expected Price
-                </th>
-                <th className="px-6 py-5 text-[10px] font-black text-[#94A3B8] dark:text-white uppercase tracking-widest text-center">
-                  Quantity
-                </th>
-                <th className="px-8 py-5 text-[10px] font-black text-[#94A3B8] dark:text-white uppercase tracking-widest text-right">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {soldItems.length > 0 ? (
-                soldItems.map((item: SoldProduct) => (
-                  <tr key={item._id} className="group">
-                    <td className="px-8 py-5">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-slate-50 border border-gray-100 overflow-hidden relative flex-shrink-0 dark:text-white">
-                          {item.image?.url ? (
-                            <Image
-                              src={item.image.url}
-                              alt={item.itemName}
-                              fill
-                              className="object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-slate-200">
-                              <Package size={20} />
-                            </div>
-                          )}
-                        </div>
-                        <div>
-                          <p className="text-sm font-black text-[#0F172A] dark:text-white">
-                            {item.itemName}
-                          </p>
-                          <p className="text-[10px] font-bold text-[#94A3B8] dark:text-white uppercase">
-                            {item.modelNumber}
-                          </p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-5">
-                      <span className="text-xs font-bold text-[#64748B] dark:text-gray-400">
-                        {item.imeiNumber}
-                      </span>
-                    </td>
-                    <td className="px-6 py-5">
-                      <span className="text-xs font-bold text-[#64748B] dark:text-gray-400">
-                        {new Date(item.createdAt).toLocaleDateString()}
-                      </span>
-                    </td>
-                    <td className="px-6 py-5 text-center">
-                      <span className="text-xs font-black text-[#64748B] dark:text-gray-400">
-                        ${item.purchasePrice}
-                      </span>
-                    </td>
-                    <td className="px-6 py-5">
-                      <span className="text-sm font-black text-[#84CC16] dark:text-green-400">
-                        ${item.expectedPrice}
-                      </span>
-                    </td>
-                    <td className="px-6 py-5 text-center">
-                      <span className="text-xs font-black text-[#0F172A] dark:text-white">
-                        {item.quantity}
-                      </span>
-                    </td>
-                    <td className="px-8 py-5 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => setSelectedItem(item as InventoryItem)}
-                          className="p-2 text-slate-300 hover:text-[#84CC16] hover:bg-lime-50 rounded-xl transition cursor-pointer"
-                          title="View Details"
-                        >
-                          <Eye size={16} />
-                        </button>
-                        <button
-                          onClick={() => {
-                            setEditingItem(item as InventoryItem);
-                            setFormForceType("sold");
-                            setIsFormOpen(true);
-                          }}
-                          className="p-2 text-slate-300 hover:text-blue-500 hover:bg-blue-50 rounded-xl transition cursor-pointer"
-                          title="Edit Record"
-                        >
-                          <Edit2 size={16} />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteSold(item._id)}
-                          className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition cursor-pointer"
-                          title="Delete Record"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={7} className="px-8 py-20 text-center">
-                    <p className="text-slate-400 font-bold text-sm">
-                      No sold items recorded yet.
-                    </p>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
       </div>
 
       {/* Details Modal */}
