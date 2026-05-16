@@ -184,6 +184,8 @@ export function InventoryFormModal({
     {
       code: "",
       purchasePrice: 0,
+      expectedPrice: 0,
+      supplierId: "",
       quantity: 1,
       currentState: "new",
       color: "",
@@ -197,6 +199,8 @@ export function InventoryFormModal({
       {
         code: "",
         purchasePrice: 0,
+        expectedPrice: 0,
+        supplierId: "",
         quantity: 1,
         currentState: "new",
         color: "",
@@ -1907,169 +1911,226 @@ export function InventoryFormModal({
                     className="mt-0 border-none p-0 outline-none focus-visible:ring-0"
                   >
                     <div className="flex flex-col py-6 px-4 sm:px-8 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-[32px] bg-slate-50/50 dark:bg-slate-900/30 min-h-[400px]">
-                      <div className="flex items-center justify-between mb-8">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-10 gap-4">
                         <div>
-                          <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">
-                            Bulk Device Entry
-                          </h3>
-                          <p className="text-slate-500 text-sm font-medium dark:text-slate-400">
-                            Add multiple devices at once by entering their
-                            details below.
+                          <div className="flex items-center gap-3 mb-1">
+                            <div className="w-8 h-8 rounded-lg bg-[#84CC16]/10 flex items-center justify-center">
+                              <FileUp className="w-4 h-4 text-[#84CC16]" />
+                            </div>
+                            <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">
+                              Bulk Device Entry
+                            </h3>
+                          </div>
+                          <p className="text-slate-500 text-sm font-bold dark:text-slate-400 ml-11">
+                            Quickly add multiple items to your inventory.
                           </p>
                         </div>
+                        <Button
+                          onClick={addBulkRow}
+                          type="button"
+                          variant="outline"
+                          className="rounded-2xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-6 h-12 font-black uppercase tracking-widest text-[10px] hover:bg-slate-50 dark:hover:bg-slate-900 hover:border-[#84CC16] hover:text-[#84CC16] transition-all flex items-center gap-2 shadow-sm"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          Add New Row
+                        </Button>
                       </div>
 
                       <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
                         {bulkItems.map((item, index) => (
                           <div
                             key={index}
-                            className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-12 gap-4 p-4 bg-white dark:bg-slate-900 rounded-[24px] border border-slate-100 dark:border-slate-800 shadow-sm relative group animate-in fade-in slide-in-from-top-2 duration-300"
+                            className="relative group animate-in fade-in slide-in-from-top-4 duration-500"
                           >
-                            {/* Barcode */}
-                            <div className="lg:col-span-3 space-y-1.5">
-                              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1 dark:text-slate-500">
-                                Barcode / Code{" "}
-                                <span className="text-red-500">*</span>
-                              </label>
-                              <div className="relative">
-                                <div className="absolute left-3 top-1/2 -translate-y-1/2">
-                                  <Barcode className="w-4 h-4 text-slate-400" />
+                            {/* Row Indicator */}
+                            <div className="absolute -left-3 top-6 w-6 h-6 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 flex items-center justify-center text-[10px] font-black z-10 shadow-lg border-4 border-white dark:border-slate-950">
+                              {index + 1}
+                            </div>
+
+                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 overflow-hidden bg-white dark:bg-slate-900 rounded-[28px] border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md hover:border-[#84CC16]/30 transition-all">
+                              {/* Primary Section: ID & Specs */}
+                              <div className="lg:col-span-5 p-6 grid grid-cols-2 gap-4 border-b lg:border-b-0 lg:border-r border-slate-50 dark:border-slate-800/50">
+                                <div className="col-span-2 space-y-1.5">
+                                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 flex items-center gap-2">
+                                    <Barcode className="w-3 h-3" />
+                                    Barcode / Code{" "}
+                                    <span className="text-red-500">*</span>
+                                  </label>
+                                  <input
+                                    type="text"
+                                    placeholder="Scan or type device ID..."
+                                    className="w-full px-4 bg-slate-50/50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 rounded-[18px] h-[52px] font-bold text-sm outline-none focus:ring-4 focus:ring-[#84CC16]/10 focus:border-[#84CC16] transition-all dark:text-white"
+                                    value={item.code}
+                                    onChange={(e) =>
+                                      updateBulkItem(
+                                        index,
+                                        "code",
+                                        e.target.value,
+                                      )
+                                    }
+                                  />
                                 </div>
-                                <input
-                                  type="text"
-                                  placeholder="Scan/Type..."
-                                  className="w-full pl-10 pr-4 bg-slate-50/50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 rounded-xl h-[48px] font-bold text-sm outline-none focus:ring-2 focus:ring-[#84CC16]/20 transition-all dark:text-white"
-                                  value={item.code}
-                                  onChange={(e) =>
-                                    updateBulkItem(
-                                      index,
-                                      "code",
-                                      e.target.value,
-                                    )
-                                  }
-                                />
-                              </div>
-                            </div>
-
-                            {/* Color */}
-                            <div className="lg:col-span-1 space-y-1.5">
-                              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1 dark:text-slate-500">
-                                Color
-                              </label>
-                              <input
-                                type="text"
-                                placeholder="Color"
-                                className="w-full px-3 bg-slate-50/50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 rounded-xl h-[48px] font-bold text-sm outline-none focus:ring-2 focus:ring-[#84CC16]/20 transition-all dark:text-white"
-                                value={item.color}
-                                onChange={(e) =>
-                                  updateBulkItem(index, "color", e.target.value)
-                                }
-                              />
-                            </div>
-
-                            {/* Storage */}
-                            <div className="lg:col-span-1 space-y-1.5">
-                              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1 dark:text-slate-500">
-                                Size
-                              </label>
-                              <input
-                                type="text"
-                                placeholder="Size"
-                                className="w-full px-3 bg-slate-50/50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 rounded-xl h-[48px] font-bold text-sm outline-none focus:ring-2 focus:ring-[#84CC16]/20 transition-all dark:text-white"
-                                value={item.storage}
-                                onChange={(e) =>
-                                  updateBulkItem(
-                                    index,
-                                    "storage",
-                                    e.target.value,
-                                  )
-                                }
-                              />
-                            </div>
-
-                            {/* Supplier Condition */}
-                            <div className="lg:col-span-3 space-y-1.5">
-                              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1 dark:text-slate-500">
-                                Supplier Condition
-                              </label>
-                              <input
-                                type="text"
-                                placeholder="e.g. New, Used, Mint"
-                                className="w-full px-3 bg-slate-50/50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 rounded-xl h-[48px] font-bold text-sm outline-none focus:ring-2 focus:ring-[#84CC16]/20 transition-all dark:text-white"
-                                value={item.currentState}
-                                onChange={(e) =>
-                                  updateBulkItem(
-                                    index,
-                                    "currentState",
-                                    e.target.value,
-                                  )
-                                }
-                              />
-                            </div>
-
-                            {/* Price */}
-                            <div className="lg:col-span-2 space-y-1.5">
-                              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1 dark:text-slate-500">
-                                Price ($)
-                              </label>
-                              <div className="relative">
-                                <div className="absolute left-3 top-1/2 -translate-y-1/2">
-                                  <DollarSign className="w-4 h-4 text-slate-400" />
+                                <div className="space-y-1.5">
+                                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                                    Color
+                                  </label>
+                                  <input
+                                    type="text"
+                                    placeholder="e.g. Black"
+                                    className="w-full px-4 bg-slate-50/50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 rounded-[18px] h-[52px] font-bold text-sm outline-none focus:ring-4 focus:ring-[#84CC16]/10 focus:border-[#84CC16] transition-all dark:text-white"
+                                    value={item.color}
+                                    onChange={(e) =>
+                                      updateBulkItem(
+                                        index,
+                                        "color",
+                                        e.target.value,
+                                      )
+                                    }
+                                  />
                                 </div>
-                                <input
-                                  type="number"
-                                  placeholder="0.00"
-                                  className="w-full pl-10 pr-4 bg-slate-50/50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 rounded-xl h-[48px] font-bold text-sm outline-none focus:ring-2 focus:ring-[#84CC16]/20 transition-all dark:text-white"
-                                  value={item.purchasePrice || ""}
-                                  onChange={(e) =>
-                                    updateBulkItem(
-                                      index,
-                                      "purchasePrice",
-                                      Number(e.target.value),
-                                    )
-                                  }
-                                />
+                                <div className="space-y-1.5">
+                                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                                    Storage/Size
+                                  </label>
+                                  <input
+                                    type="text"
+                                    placeholder="e.g. 128GB"
+                                    className="w-full px-4 bg-slate-50/50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 rounded-[18px] h-[52px] font-bold text-sm outline-none focus:ring-4 focus:ring-[#84CC16]/10 focus:border-[#84CC16] transition-all dark:text-white"
+                                    value={item.storage}
+                                    onChange={(e) =>
+                                      updateBulkItem(
+                                        index,
+                                        "storage",
+                                        e.target.value,
+                                      )
+                                    }
+                                  />
+                                </div>
                               </div>
-                            </div>
 
-                            {/* Quantity */}
-                            <div className="lg:col-span-1 space-y-1.5">
-                              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1 dark:text-slate-500">
-                                Qty
-                              </label>
-                              <input
-                                type="number"
-                                placeholder="1"
-                                className="w-full px-3 bg-slate-50/50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 rounded-xl h-[48px] font-bold text-sm outline-none focus:ring-2 focus:ring-[#84CC16]/20 transition-all dark:text-white"
-                                value={item.quantity || ""}
-                                onChange={(e) =>
-                                  updateBulkItem(
-                                    index,
-                                    "quantity",
-                                    Number(e.target.value),
-                                  )
-                                }
-                              />
-                            </div>
+                              {/* Secondary Section: Source & Condition */}
+                              <div className="lg:col-span-4 p-6 grid grid-cols-1 gap-4 bg-slate-50/30 dark:bg-slate-800/10 border-b lg:border-b-0 lg:border-r border-slate-50 dark:border-slate-800/50">
+                                <div className="space-y-1.5">
+                                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                                    Supplier Name
+                                  </label>
+                                  <input
+                                    type="text"
+                                    placeholder="Who provided this?"
+                                    className="w-full px-4 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-[18px] h-[52px] font-bold text-sm outline-none focus:ring-4 focus:ring-[#84CC16]/10 focus:border-[#84CC16] transition-all dark:text-white"
+                                    value={item.supplierId}
+                                    onChange={(e) =>
+                                      updateBulkItem(
+                                        index,
+                                        "supplierId",
+                                        e.target.value,
+                                      )
+                                    }
+                                  />
+                                </div>
+                                <div className="space-y-1.5">
+                                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                                    Current State
+                                  </label>
+                                  <input
+                                    type="text"
+                                    placeholder="e.g. Mint Condition"
+                                    className="w-full px-4 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-[18px] h-[52px] font-bold text-sm outline-none focus:ring-4 focus:ring-[#84CC16]/10 focus:border-[#84CC16] transition-all dark:text-white"
+                                    value={item.currentState}
+                                    onChange={(e) =>
+                                      updateBulkItem(
+                                        index,
+                                        "currentState",
+                                        e.target.value,
+                                      )
+                                    }
+                                  />
+                                </div>
+                              </div>
 
-                            {/* Actions */}
-                            <div className="lg:col-span-1 flex items-end justify-center gap-2 pb-1">
-                              <button
-                                type="button"
-                                onClick={() => removeBulkRow(index)}
-                                className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all"
-                                title="Remove row"
-                              >
-                                <X className="w-4 h-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={addBulkRow}
-                                className="w-9 h-9 rounded-xl flex items-center justify-center bg-[#84CC16]/10 text-[#84CC16] hover:bg-[#84CC16] hover:text-white transition-all shadow-sm"
-                                title="Add another row"
-                              >
-                                <Plus className="w-4 h-4" strokeWidth={3} />
-                              </button>
+                              {/* Tertiary Section: Pricing & Qty */}
+                              <div className="lg:col-span-3 p-6 grid grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                                    Buy Price
+                                  </label>
+                                  <div className="relative">
+                                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                                    <input
+                                      type="number"
+                                      placeholder="0"
+                                      className="w-full pl-9 pr-3 bg-slate-50/50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 rounded-[18px] h-[52px] font-bold text-sm outline-none focus:ring-4 focus:ring-[#84CC16]/10 focus:border-[#84CC16] transition-all dark:text-white"
+                                      value={item.purchasePrice || ""}
+                                      onChange={(e) =>
+                                        updateBulkItem(
+                                          index,
+                                          "purchasePrice",
+                                          Number(e.target.value),
+                                        )
+                                      }
+                                    />
+                                  </div>
+                                </div>
+                                <div className="space-y-1.5">
+                                  <label className="text-[10px] font-black uppercase tracking-widest text-[#84CC16]">
+                                    Sell Price
+                                  </label>
+                                  <div className="relative">
+                                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#84CC16]" />
+                                    <input
+                                      type="number"
+                                      placeholder="0"
+                                      className="w-full pl-9 pr-3 bg-[#84CC16]/5 dark:bg-[#84CC16]/10 border-[#84CC16]/20 dark:border-[#84CC16]/30 rounded-[18px] h-[52px] font-black text-sm text-[#84CC16] outline-none focus:ring-4 focus:ring-[#84CC16]/10 focus:border-[#84CC16] transition-all"
+                                      value={item.expectedPrice || ""}
+                                      onChange={(e) =>
+                                        updateBulkItem(
+                                          index,
+                                          "expectedPrice",
+                                          Number(e.target.value),
+                                        )
+                                      }
+                                    />
+                                  </div>
+                                </div>
+                                <div className="space-y-1.5">
+                                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                                    Qty
+                                  </label>
+                                  <input
+                                    type="number"
+                                    placeholder="1"
+                                    className="w-full px-4 bg-slate-50/50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 rounded-[18px] h-[52px] font-bold text-sm outline-none focus:ring-2 focus:ring-[#84CC16]/20 transition-all dark:text-white"
+                                    value={item.quantity || ""}
+                                    onChange={(e) =>
+                                      updateBulkItem(
+                                        index,
+                                        "quantity",
+                                        Number(e.target.value),
+                                      )
+                                    }
+                                  />
+                                </div>
+                                <div className="flex items-end pb-1 gap-2">
+                                  {bulkItems.length > 1 && (
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      onClick={() => removeBulkRow(index)}
+                                      className="w-1/2 h-[52px] rounded-[18px] text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all flex items-center justify-center p-0"
+                                    >
+                                      <X className="w-4 h-4" />
+                                    </Button>
+                                  )}
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    onClick={addBulkRow}
+                                    className="w-1/2 h-[52px] rounded-[18px] text-[#84CC16] hover:bg-[#84CC16]/10 transition-all flex items-center justify-center p-0"
+                                  >
+                                    <Plus className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              </div>
                             </div>
                           </div>
                         ))}
@@ -2077,7 +2138,7 @@ export function InventoryFormModal({
 
                       <div className="mt-auto pt-8 flex items-center justify-between border-t border-slate-200/50 dark:border-slate-800/50">
                         <div className="flex items-center gap-3 text-slate-400 dark:text-slate-500">
-                          <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                          <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center border border-slate-200 dark:border-slate-700">
                             <span className="text-sm font-black text-slate-600 dark:text-slate-300">
                               {bulkItems.filter((i) => i.code.trim()).length}
                             </span>

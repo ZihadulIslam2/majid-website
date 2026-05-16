@@ -248,6 +248,8 @@ export interface ScanResultData {
 export interface BulkBarcodeItem {
   code: string;
   purchasePrice: number;
+  expectedPrice: number;
+  supplierId: string;
   quantity: number;
   currentState: string;
   color: string;
