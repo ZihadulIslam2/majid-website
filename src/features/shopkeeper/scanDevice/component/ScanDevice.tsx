@@ -45,6 +45,7 @@ export default function ScanDevice() {
     error,
     singleReportMeta,
     handleScan,
+    handleRegenerateScan, // ✅ এখানে যোগ করতে হবে
     clearResults,
   } = useScanDevice();
 
@@ -122,6 +123,15 @@ export default function ScanDevice() {
           )
         }
         isDownloading={isDownloading}
+        onRegenerate={() => {
+          clearResults();
+          if (selectedService) {
+            handleRegenerateScan(
+              scanResult.imei,
+              selectedService.serviceId || 6,
+            );
+          }
+        }}
       />
     );
   }

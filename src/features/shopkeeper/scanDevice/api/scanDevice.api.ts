@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/features/shopkeeper/scanDevice/api/scanDevice.api.ts
 
 import axiosInstance from "@/lib/instance/axios-instance";
@@ -12,10 +13,16 @@ import {
 export const checkIMEIApi = async (
   imei: string | string[],
   serviceId: number = 6,
+  generateNew?: boolean, // নতুন প্যারামিটার যোগ করুন
 ): Promise<IMEICheckApiResponse> => {
-  const payload = Array.isArray(imei)
+  const payload: any = Array.isArray(imei)
     ? { imei, serviceId }
     : { imei, serviceId };
+
+  // যদি generateNew true হয় তাহলে payload এ generate: "new" যোগ করবে
+  if (generateNew) {
+    payload.generate = "new";
+  }
 
   console.log("📤 API Payload:", payload);
 
@@ -23,12 +30,17 @@ export const checkIMEIApi = async (
   return response.data;
 };
 
-// নতুন API for favourite services (v2)
 export const checkFavouriteIMEIApi = async (
   imei: string,
   serviceId: number,
+  generateNew?: boolean,
 ): Promise<FavouriteIMEIResponse> => {
-  const payload = { imei, serviceId };
+  const payload: any = { imei, serviceId };
+
+  if (generateNew) {
+    payload.generate = "new";
+  }
+
   console.log("⭐ Favourite API Payload:", payload);
 
   const response = await axiosInstance.post("/imei/check-v2", payload);
