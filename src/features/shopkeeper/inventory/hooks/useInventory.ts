@@ -8,6 +8,8 @@ import {
   createFromBarcodeBulk,
   createInvoice,
   getMyInvoiceHistory,
+  createCustomer,
+  getCustomersByShopkeeper,
 } from "../api/inventory.api";
 import type {
   CreateInventoryInput,
@@ -107,5 +109,28 @@ export function useMyInvoiceHistory(id: string) {
     queryFn: () => getMyInvoiceHistory(id),
 
     enabled: !!id,
+  });
+}
+
+export function useCreateCustomer() {
+  return useMutation({
+    mutationFn: (input: {
+      firstName: string;
+      lastName: string;
+      email: string;
+      phone: string;
+      address: string;
+      shopkeeperId: string;
+      salesMethod?: string;
+      actualSalePrice?: number;
+    }) => createCustomer(input),
+  });
+}
+
+export function useCustomersByShopkeeper(shopkeeperId: string) {
+  return useQuery({
+    queryKey: ["customers", shopkeeperId],
+    queryFn: () => getCustomersByShopkeeper(shopkeeperId),
+    enabled: !!shopkeeperId,
   });
 }

@@ -58,6 +58,7 @@ import {
   MapPin,
   CreditCard,
   ShoppingCart,
+  Phone,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
@@ -86,6 +87,8 @@ import {
   useUpdateInventory,
   useCreateFromBarcode,
   useCreateFromBarcodeBulk,
+  useCreateCustomer,
+  useCustomersByShopkeeper,
 } from "../../hooks/useInventory";
 import { ScanResultModal } from "./ScanResultModal";
 
@@ -267,10 +270,78 @@ export function InventoryFormModal({
   const { mutate: updateItem, isPending: isUpdating } = useUpdateInventory();
   const { mutate: handleCreateFromBarcode, isPending: isCreatingFromBarcode } =
     useCreateFromBarcode();
+  const { mutate: createCustomerMutate, isPending: isCreatingCustomer } =
+    useCreateCustomer();
   const { data: session } = useSession();
+  const { data: customersData } = useCustomersByShopkeeper(
+    (session?.user as { id?: string })?.id || "",
+  );
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+  const [customerSearchQuery, setCustomerSearchQuery] = useState("");
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setShowCustomerDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   const [scanResultModalData, setScanResultModalData] =
     useState<ScanResultData | null>(null);
   const isPending = isCreating || isUpdating || isCreatingFromBarcode;
+
+  const handleAddCustomer = async () => {
+    const values = form.getValues();
+    if (
+      !values.customerName ||
+      !values.customerEmail ||
+      !values.customerPhone
+    ) {
+      toast.error("Please fill name, email and phone to add a customer.");
+      return;
+    }
+    const [firstName, ...lastNameParts] = values.customerName.split(" ");
+    const lastName = lastNameParts.join(" ") || " ";
+
+    if (!session?.user) {
+      toast.error("User session not found");
+      return;
+    }
+
+    createCustomerMutate(
+      {
+        firstName,
+        lastName,
+        email: values.customerEmail,
+        phone: values.customerPhone,
+        address: values.customerAddress || "",
+        shopkeeperId: (session.user as { id?: string })?.id || "",
+        salesMethod: values.saleMethod,
+        actualSalePrice: values.salePrice,
+      },
+      {
+        onSuccess: () => {
+          toast.success("Customer added successfully!");
+        },
+        onError: (error: unknown) => {
+          const apiError = error as {
+            response?: { data?: { message?: string } };
+          };
+          toast.error(
+            apiError?.response?.data?.message || "Failed to add customer",
+          );
+        },
+      },
+    );
+  };
 
   const form = useForm<CreateInventoryInput>({
     resolver: zodResolver(CreateInventorySchema),
@@ -278,6 +349,7 @@ export function InventoryFormModal({
       userId: "",
       customerName: "",
       customerEmail: "",
+      customerPhone: "",
       customerAddress: "",
       salePrice: undefined,
       saleQuantity: 1,
@@ -321,6 +393,7 @@ export function InventoryFormModal({
             : (item.userId ?? ""),
         customerName: item.customerName ?? "",
         customerEmail: item.customerEmail ?? "",
+        customerPhone: item.customerPhone ?? "",
         customerAddress: item.customerAddress ?? "",
         salePrice: item.salePrice,
         saleQuantity: item.saleQuantity ?? 1,
@@ -391,6 +464,7 @@ export function InventoryFormModal({
         userId: "",
         customerName: "",
         customerEmail: "",
+        customerPhone: "",
         customerAddress: "",
         salePrice: undefined,
         saleQuantity: 1,
@@ -415,6 +489,29 @@ export function InventoryFormModal({
     }, 0);
     return () => clearTimeout(timer);
   }, [item, isOpen]);
+
+  const filteredCustomers = (customersData?.data || []).filter(
+    (customer: { firstName?: string; lastName?: string }) => {
+      const fullName =
+        `${customer.firstName || ""} ${customer.lastName || ""}`.toLowerCase();
+      return fullName.includes((customerSearchQuery || "").toLowerCase());
+    },
+  );
+
+  const handleCustomerSelect = (customer: {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+  }) => {
+    form.setValue("customerName", `${customer.firstName} ${customer.lastName}`);
+    form.setValue("customerEmail", customer.email || "");
+    form.setValue("customerPhone", customer.phone || "");
+    form.setValue("customerAddress", customer.address || "");
+    setCustomerSearchQuery("");
+    setShowCustomerDropdown(false);
+  };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1498,9 +1595,65 @@ export function InventoryFormModal({
                     <ShoppingCart className="w-3.5 h-3.5 text-[#84CC16]" />
                     Sales Information
                   </h4>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider dark:text-white">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider dark:text-white mb-4">
                     Customer and transaction details
                   </p>
+
+                  {/* Standalone Customer Search */}
+                  <div className="relative group mb-6" ref={dropdownRef}>
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center shadow-sm group-focus-within:bg-[#84CC16]/10 transition-all z-10">
+                      <Search className="w-3.5 h-3.5 text-slate-400 group-focus-within:text-[#84CC16] transition-colors" />
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Search existing customer..."
+                      autoComplete="off"
+                      className="w-full pl-14 pr-4 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:border-[#84CC16]/50 rounded-2xl h-12 font-bold text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#84CC16]/15 focus-visible:border-[#84CC16] transition-all shadow-sm"
+                      value={customerSearchQuery}
+                      onFocus={() => setShowCustomerDropdown(true)}
+                      onChange={(e) => {
+                        setCustomerSearchQuery(e.target.value);
+                        setShowCustomerDropdown(true);
+                      }}
+                    />
+                    {showCustomerDropdown &&
+                      filteredCustomers.length > 0 &&
+                      customerSearchQuery.trim() !== "" && (
+                        <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-900 rounded-[20px] shadow-2xl border border-slate-100 dark:border-slate-800 z-50 max-h-60 overflow-y-auto overflow-x-hidden animate-in fade-in slide-in-from-top-2">
+                          <div className="p-2">
+                            {filteredCustomers.map(
+                              (customer: {
+                                _id?: string;
+                                firstName?: string;
+                                lastName?: string;
+                                email?: string;
+                                phone?: string;
+                              }) => (
+                                <div
+                                  key={customer._id || Math.random().toString()}
+                                  className="flex items-center gap-3 p-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 rounded-2xl transition-all"
+                                  onClick={() => handleCustomerSelect(customer)}
+                                >
+                                  <div className="w-10 h-10 rounded-full bg-[#84CC16]/10 flex items-center justify-center shrink-0">
+                                    <User className="w-4 h-4 text-[#84CC16]" />
+                                  </div>
+                                  <div className="flex flex-col min-w-0">
+                                    <p className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                                      {customer.firstName} {customer.lastName}
+                                    </p>
+                                    {(customer.email || customer.phone) && (
+                                      <p className="text-[10px] text-slate-500 truncate">
+                                        {customer.email || customer.phone}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              ),
+                            )}
+                          </div>
+                        </div>
+                      )}
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -1546,6 +1699,57 @@ export function InventoryFormModal({
                             <Input
                               type="email"
                               placeholder="john@example.com"
+                              className="pl-14 pr-4 bg-slate-50/80 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-[20px] h-[56px] font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:bg-white dark:focus-visible:bg-slate-950 focus-visible:ring-4 focus-visible:ring-[#84CC16]/15 focus-visible:border-[#84CC16] transition-all shadow-sm"
+                              {...field}
+                            />
+                          </div>
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Customer Phone */}
+                  <FormField
+                    control={form.control}
+                    name="customerPhone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-white mb-2 block ml-1">
+                          Customer Phone
+                        </FormLabel>
+                        <FormControl>
+                          <div className="relative group">
+                            <div className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white dark:bg-slate-800 rounded-[14px] flex items-center justify-center shadow-sm border border-slate-100 dark:border-slate-700 group-focus-within:border-[#84CC16]/30 group-focus-within:bg-[#84CC16]/5 transition-all z-10">
+                              <Phone className="w-4 h-4 text-slate-400 group-focus-within:text-[#84CC16] transition-colors" />
+                            </div>
+                            <Input
+                              type="tel"
+                              placeholder="+1234567890"
+                              className="pl-14 pr-4 bg-slate-50/80 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-[20px] h-[56px] font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:bg-white dark:focus-visible:bg-slate-950 focus-visible:ring-4 focus-visible:ring-[#84CC16]/15 focus-visible:border-[#84CC16] transition-all shadow-sm"
+                              {...field}
+                            />
+                          </div>
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Customer Address */}
+                  <FormField
+                    control={form.control}
+                    name="customerAddress"
+                    render={({ field }) => (
+                      <FormItem className="sm:col-span-2">
+                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-white mb-2 block ml-1">
+                          Customer Address
+                        </FormLabel>
+                        <FormControl>
+                          <div className="relative group">
+                            <div className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white dark:bg-slate-800 rounded-[14px] flex items-center justify-center shadow-sm border border-slate-100 dark:border-slate-700 group-focus-within:border-[#84CC16]/30 group-focus-within:bg-[#84CC16]/5 transition-all z-10">
+                              <MapPin className="w-4 h-4 text-slate-400 group-focus-within:text-[#84CC16] transition-colors" />
+                            </div>
+                            <Input
+                              placeholder="123 Street, City, Country"
                               className="pl-14 pr-4 bg-slate-50/80 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-[20px] h-[56px] font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:bg-white dark:focus-visible:bg-slate-950 focus-visible:ring-4 focus-visible:ring-[#84CC16]/15 focus-visible:border-[#84CC16] transition-all shadow-sm"
                               {...field}
                             />
@@ -1633,31 +1837,6 @@ export function InventoryFormModal({
                     )}
                   />
 
-                  {/* Customer Address */}
-                  <FormField
-                    control={form.control}
-                    name="customerAddress"
-                    render={({ field }) => (
-                      <FormItem className="sm:col-span-2">
-                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-white mb-2 block ml-1">
-                          Customer Address
-                        </FormLabel>
-                        <FormControl>
-                          <div className="relative group">
-                            <div className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white dark:bg-slate-800 rounded-[14px] flex items-center justify-center shadow-sm border border-slate-100 dark:border-slate-700 group-focus-within:border-[#84CC16]/30 group-focus-within:bg-[#84CC16]/5 transition-all z-10">
-                              <MapPin className="w-4 h-4 text-slate-400 group-focus-within:text-[#84CC16] transition-colors" />
-                            </div>
-                            <Input
-                              placeholder="123 Street, City, Country"
-                              className="pl-14 pr-4 bg-slate-50/80 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-[20px] h-[56px] font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:bg-white dark:focus-visible:bg-slate-950 focus-visible:ring-4 focus-visible:ring-[#84CC16]/15 focus-visible:border-[#84CC16] transition-all shadow-sm"
-                              {...field}
-                            />
-                          </div>
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-
                   {/* Sale Price */}
                   <FormField
                     control={form.control}
@@ -1683,6 +1862,23 @@ export function InventoryFormModal({
                       </FormItem>
                     )}
                   />
+
+                  {/* Add Customer Button */}
+                  <div className="sm:col-span-2 lg:col-span-3 flex justify-end">
+                    <Button
+                      type="button"
+                      onClick={handleAddCustomer}
+                      disabled={isCreatingCustomer}
+                      className="bg-[#84CC16] hover:bg-[#65a30d] text-white rounded-2xl px-8 h-12 font-black uppercase tracking-widest shadow-lg shadow-[#84CC16]/20 active:scale-[0.98] transition-all flex items-center gap-2"
+                    >
+                      {isCreatingCustomer ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <User className="w-4 h-4" />
+                      )}
+                      {isCreatingCustomer ? "Saving..." : "Add as New Customer"}
+                    </Button>
+                  </div>
                 </div>
               </div>
             )}
@@ -2044,6 +2240,20 @@ export function InventoryFormModal({
                                         e.target.value,
                                       )
                                     }
+                                  />
+                                </div>
+                                <div className="space-y-1.5">
+                                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                                    Device Image
+                                  </label>
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="w-full px-4 py-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-[18px] h-[52px] font-bold text-sm outline-none focus:ring-4 focus:ring-[#84CC16]/10 focus:border-[#84CC16] transition-all dark:text-white file:mr-4 file:py-1 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-[#84CC16]/10 file:text-[#84CC16] hover:file:bg-[#84CC16]/20"
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0] || null;
+                                      updateBulkItem(index, "image", file);
+                                    }}
                                   />
                                 </div>
                               </div>

@@ -34,6 +34,7 @@ export const InventoryItemSchema = z.object({
     .nullable(),
   customerName: z.string().optional(),
   customerEmail: z.string().optional(),
+  customerPhone: z.string().optional(),
   customerAddress: z.string().optional(),
   salePrice: z.number().optional(),
   saleQuantity: z.number().optional(),
@@ -99,6 +100,7 @@ export const CreateInventorySchema = z.object({
   userId: z.string().optional(),
   customerName: z.string().optional(),
   customerEmail: z.string().optional(),
+  customerPhone: z.string().optional(),
   customerAddress: z.string().optional(),
   salePrice: z.coerce.number().optional(),
   saleQuantity: z.coerce.number().optional(),
@@ -127,6 +129,7 @@ export const UpdateInventorySchema = z.object({
   currentState: z.enum(["new", "good condition"]).optional(),
   customerName: z.string().optional(),
   customerEmail: z.string().optional(),
+  customerPhone: z.string().optional(),
   customerAddress: z.string().optional(),
   salePrice: z.coerce.number().optional(),
   saleQuantity: z.coerce.number().optional(),
@@ -254,6 +257,7 @@ export interface BulkBarcodeItem {
   currentState: string;
   color: string;
   storage: string;
+  image?: File | null;
 }
 
 export interface CreateFromBarcodeBulkInput {

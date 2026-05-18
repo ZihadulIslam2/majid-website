@@ -96,7 +96,37 @@ export const createFromBarcode = async (input: {
 export const createFromBarcodeBulk = async (
   input: CreateFromBarcodeBulkInput,
 ) => {
-  const response = await api.post(`${BASE}/create-from-barcode/bulk`, input);
+  const formData = new FormData();
+  formData.append("userId", input.userId);
+  input.barcodes.forEach((barcode, index) => {
+    formData.append(`barcodes[${index}][code]`, barcode.code);
+    formData.append(
+      `barcodes[${index}][purchasePrice]`,
+      String(barcode.purchasePrice),
+    );
+    formData.append(
+      `barcodes[${index}][expectedPrice]`,
+      String(barcode.expectedPrice),
+    );
+    if (barcode.supplierId)
+      formData.append(`barcodes[${index}][supplierId]`, barcode.supplierId);
+    formData.append(`barcodes[${index}][quantity]`, String(barcode.quantity));
+    formData.append(`barcodes[${index}][currentState]`, barcode.currentState);
+    if (barcode.color)
+      formData.append(`barcodes[${index}][color]`, barcode.color);
+    if (barcode.storage)
+      formData.append(`barcodes[${index}][storage]`, barcode.storage);
+    if (barcode.image)
+      formData.append(`barcodes[${index}][image]`, barcode.image);
+  });
+
+  const response = await api.post(
+    `${BASE}/create-from-barcode/bulk`,
+    formData,
+    {
+      headers: { "Content-Type": "multipart/form-data" },
+    },
+  );
   return response.data;
 };
 
@@ -125,5 +155,24 @@ export const getMyInvoiceHistory = async (
 ): Promise<InvoiceHistoryResponse> => {
   const response = await api.get(`/invoices/shopkeeper/${id}`);
 
+  return response.data;
+};
+
+export const createCustomer = async (input: {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  address: string;
+  shopkeeperId: string;
+  salesMethod?: string;
+  actualSalePrice?: number;
+}) => {
+  const response = await api.post(`/customer/create`, input);
+  return response.data;
+};
+
+export const getCustomersByShopkeeper = async (shopkeeperId: string) => {
+  const response = await api.get(`/customer/shopkeeper/${shopkeeperId}`);
   return response.data;
 };
