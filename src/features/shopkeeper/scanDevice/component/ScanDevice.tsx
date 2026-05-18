@@ -104,6 +104,12 @@ export default function ScanDevice() {
           )
         }
         isDownloading={isDownloading}
+        onRegenerate={() => {
+          clearResults();
+          if (selectedService) {
+            handleRegenerateScan(imei, selectedService.serviceId || 6);
+          }
+        }}
       />
     );
   }
