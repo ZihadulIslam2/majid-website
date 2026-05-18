@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { motion } from "framer-motion";
@@ -24,6 +25,8 @@ import {
   XCircle,
   Unlock,
   Copy,
+  RefreshCw,
+  Clock,
 } from "lucide-react";
 import { FavouriteIMEIData } from "../../scanDevice/types/scanDevice.types";
 import { useState } from "react";
@@ -36,6 +39,7 @@ interface FavouriteResultViewProps {
   onBack: () => void;
   onDownload: () => void;
   isDownloading: boolean;
+  onRegenerate?: () => void; // নতুন প্রপ
 }
 
 const getRiskLabel = (score: number) => {
@@ -62,16 +66,21 @@ export const FavouriteResultView = ({
   onBack,
   onDownload,
   isDownloading,
+  onRegenerate,
 }: FavouriteResultViewProps) => {
   const providerData = scanResult.providerResults;
   const riskScore = scanResult.riskMeter;
   const riskInfo = getRiskLabel(riskScore);
   const [copied, setCopied] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
 
   const isSimUnlocked = providerData.simlock?.toLowerCase() === "unlocked";
   const isICloudUnlocked = providerData.icloud_lock?.toLowerCase() === "off";
   const isBlacklistClean =
     providerData.blacklist_status?.toLowerCase() === "clean";
+
+  // Check if data is old generated
+  const isOldGenerated = (scanResult as any).oldGenerated === true;
 
   // Extract market value from description or device_configuration
   const extractMarketValue = () => {
@@ -127,6 +136,14 @@ Replaced Device: ${providerData.replaced_device === "No" ? "NO" : "YES"}
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleRegenerate = async () => {
+    if (onRegenerate) {
+      setIsRegenerating(true);
+      await onRegenerate();
+      setIsRegenerating(false);
+    }
+  };
+
   return (
     <div className="p-4 md:py-10 max-w-6xl mx-auto space-y-6 font-sans text-slate-900 bg-[#F8FAFC] min-h-screen">
       {/* Back Navigation */}
@@ -141,8 +158,71 @@ Replaced Device: ${providerData.replaced_device === "No" ? "NO" : "YES"}
         <span className="font-medium">Back to scan</span>
       </button>
 
+      {/* Old Data Warning Banner */}
+      {isOldGenerated && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-amber-100 rounded-full">
+              <Clock size={20} className="text-amber-600" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-amber-800">
+                Cached Data Notice
+              </p>
+              <p className="text-xs text-amber-700">
+                This information is from a previously generated report. For the
+                most up-to-date data, please generate a fresh report.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={handleRegenerate}
+            disabled={isRegenerating}
+            className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isRegenerating ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <RefreshCw size={16} />
+            )}
+            {isRegenerating ? "Generating..." : "Generate New"}
+          </button>
+        </motion.div>
+      )}
+
       {/* --- MOBILE VIEW --- */}
       <div className="block md:hidden bg-white border border-slate-200 rounded-[32px] p-5 shadow-sm relative">
+        {/* Old Data Warning for Mobile */}
+        {isOldGenerated && (
+          <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+            <div className="flex items-center gap-2 mb-2">
+              <Clock size={14} className="text-amber-600" />
+              <span className="text-xs font-semibold text-amber-800">
+                Cached Data
+              </span>
+            </div>
+            <p className="text-[11px] text-amber-700 mb-2">
+              This is from a previously generated report.
+            </p>
+            <button
+              onClick={handleRegenerate}
+              disabled={isRegenerating}
+              className="w-full py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold transition flex items-center justify-center gap-2"
+            >
+              {isRegenerating ? (
+                <Loader2 size={12} className="animate-spin" />
+              ) : (
+                <RefreshCw size={12} />
+              )}
+              {isRegenerating ? "Generating..." : "Generate New"}
+            </button>
+          </div>
+        )}
+
         <div className="space-y-3 text-center text-[14px] text-[#5F6368] leading-relaxed">
           <p>
             <span className="font-semibold">Model:</span>{" "}

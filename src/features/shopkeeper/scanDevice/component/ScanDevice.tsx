@@ -45,6 +45,7 @@ export default function ScanDevice() {
     error,
     singleReportMeta,
     handleScan,
+    handleRegenerateScan, // ✅ এখানে যোগ করতে হবে
     clearResults,
   } = useScanDevice();
 
@@ -103,6 +104,12 @@ export default function ScanDevice() {
           )
         }
         isDownloading={isDownloading}
+        onRegenerate={() => {
+          clearResults();
+          if (selectedService) {
+            handleRegenerateScan(imei, selectedService.serviceId || 6);
+          }
+        }}
       />
     );
   }
@@ -122,6 +129,15 @@ export default function ScanDevice() {
           )
         }
         isDownloading={isDownloading}
+        onRegenerate={() => {
+          clearResults();
+          if (selectedService) {
+            handleRegenerateScan(
+              scanResult.imei,
+              selectedService.serviceId || 6,
+            );
+          }
+        }}
       />
     );
   }
@@ -142,6 +158,10 @@ export default function ScanDevice() {
             onBack={() => {
               clearResults();
               router.push("/shopkeeper/scan-device");
+            }}
+            onRegenerateItem={(imei, serviceId) => {
+              clearResults();
+              return handleRegenerateScan(imei, serviceId);
             }}
           />
         </div>

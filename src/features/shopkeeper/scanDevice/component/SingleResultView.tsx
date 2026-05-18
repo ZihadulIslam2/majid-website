@@ -34,9 +34,10 @@ import {
   getStatusColor,
   getTechnicalBreakdownItems,
 } from "@/utils/resultHelpers";
-import { SmartInvoicePDF } from "./SmartInvoicePDF";
+import { InvoiceModal, InvoiceFormData } from "./InvoiceModal";
 import { useCertificateDownload } from "../hooks/useCertificateDownload";
 import { useState } from "react";
+import { SmartInvoicePDF } from "./SmartInvoicePDF";
 
 interface SingleResultViewProps {
   scanResult: IMEIResult;
@@ -45,7 +46,7 @@ interface SingleResultViewProps {
   onBack: () => void;
   onDownload: () => void;
   isDownloading: boolean;
-  onRegenerate?: () => void; // নতুন প্রপ
+  onRegenerate?: () => void;
 }
 
 const getRiskLabel = (score: number) => {
@@ -64,7 +65,6 @@ const getRiskLabel = (score: number) => {
   return { label: "High Risk", color: "bg-red-500", text: "text-red-500" };
 };
 
-// Helper function to parse provider data rows
 const parseProviderRows = (
   html: string,
 ): { label: string; value: string }[] => {
@@ -113,6 +113,10 @@ export const SingleResultView = ({
   const [isInvoiceDownloading, setIsInvoiceDownloading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
+  const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+  const [invoiceFormData, setInvoiceFormData] =
+    useState<InvoiceFormData | null>(null);
+  const [isInvoiceGenerating, setIsInvoiceGenerating] = useState(false);
 
   const providerData = scanResult.providerData as
     | {
@@ -129,7 +133,6 @@ export const SingleResultView = ({
   const providerHTML = providerData?.result || "";
   const providerRows = parseProviderRows(providerHTML);
 
-  // Create provider data map
   const providerDataMap: Record<string, string> = {};
   providerRows.forEach((row) => {
     providerDataMap[row.label] = row.value;
@@ -152,10 +155,8 @@ export const SingleResultView = ({
   const lockedCarrier = providerDataMap["Locked Carrier"] || "Unlock";
   const notice = providerDataMap["Notice"] || "";
 
-  // Check if data is old generated
   const isOldGenerated = (scanResult as any).oldGenerated === true;
 
-  // Get check statuses
   const isBlacklistClean =
     scanResult.checks?.globalBlacklist?.status === "passed";
   const isFinancingClean =
@@ -163,7 +164,6 @@ export const SingleResultView = ({
   const isHardwareClean = scanResult.checks?.hardwareLock?.status === "passed";
   const isPartAuthentic =
     scanResult.checks?.partAuthenticity?.status === "passed";
-
   const isSimUnlocked = scanResult.checks?.hardwareLock?.status === "passed";
   const isICloudUnlocked = scanResult.checks?.hardwareLock?.status === "passed";
 
@@ -195,6 +195,10 @@ export const SingleResultView = ({
   };
 
   const handleDownloadInvoice = async () => {
+    if (!invoiceFormData) {
+      setIsInvoiceModalOpen(true);
+      return;
+    }
     setIsInvoiceDownloading(true);
     try {
       await downloadCertificatePdf(
@@ -205,6 +209,23 @@ export const SingleResultView = ({
       console.error("Invoice download failed:", error);
     } finally {
       setIsInvoiceDownloading(false);
+    }
+  };
+
+  const handleGenerateInvoice = async (formData: InvoiceFormData) => {
+    setIsInvoiceGenerating(true);
+    setInvoiceFormData(formData);
+    setIsInvoiceModalOpen(false);
+
+    try {
+      await downloadCertificatePdf(
+        [invoiceElementId],
+        `Invoice_${scanResult.imei}.pdf`,
+      );
+    } catch (error) {
+      console.error("Invoice generation failed:", error);
+    } finally {
+      setIsInvoiceGenerating(false);
     }
   };
 
@@ -387,19 +408,18 @@ SIM-Lock Status: ${isSimUnlocked ? "UNLOCKED" : "LOCKED"}
           <Copy size={22} />
         </button>
 
-        {/* Mobile Action Buttons */}
         <div className="mt-6 space-y-2">
           <button
-            onClick={handleDownloadInvoice}
-            disabled={isInvoiceDownloading}
+            onClick={() => setIsInvoiceModalOpen(true)}
+            disabled={isInvoiceDownloading || isInvoiceGenerating}
             className="w-full py-2.5 rounded-xl border-2 border-[#84CC16] text-[#84CC16] font-bold text-sm transition flex items-center justify-center gap-2"
           >
-            {isInvoiceDownloading ? (
+            {isInvoiceGenerating ? (
               <Loader2 size={14} className="animate-spin" />
             ) : (
               <Receipt size={14} />
             )}
-            {isInvoiceDownloading ? "Generating..." : "Create Smart Invoice"}
+            Create Smart Invoice
           </button>
           <button
             onClick={handleDownloadCertificate}
@@ -497,7 +517,7 @@ SIM-Lock Status: ${isSimUnlocked ? "UNLOCKED" : "LOCKED"}
           </div>
         </div>
 
-        {/* Status Grid - Security Checks */}
+        {/* Status Grid */}
         <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
           <StatusTile
             icon={<Globe className="text-emerald-500" />}
@@ -546,18 +566,20 @@ SIM-Lock Status: ${isSimUnlocked ? "UNLOCKED" : "LOCKED"}
           </span>
           <div className="space-y-3">
             <button
-              onClick={handleDownloadInvoice}
-              disabled={isInvoiceDownloading || parentIsDownloading}
-              className="w-full py-3 rounded-xl border-2 border-[#84CC16] text-[#84CC16] font-bold text-sm hover:bg-lime-50 transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={() => setIsInvoiceModalOpen(true)}
+              disabled={
+                isInvoiceDownloading ||
+                isInvoiceGenerating ||
+                parentIsDownloading
+              }
+              className="w-full py-3 rounded-xl border-2 border-[#84CC16] text-[#84CC16] font-bold text-sm hover:bg-lime-50 transition flex items-center justify-center gap-2 disabled:opacity-50"
             >
-              {isInvoiceDownloading ? (
+              {isInvoiceGenerating ? (
                 <Loader2 size={16} className="animate-spin" />
               ) : (
                 <Receipt size={16} />
               )}
-              {isInvoiceDownloading
-                ? "Generating Invoice..."
-                : "Create Smart Invoice"}
+              Create Smart Invoice
             </button>
             <button
               onClick={handleDownloadCertificate}
@@ -608,7 +630,7 @@ SIM-Lock Status: ${isSimUnlocked ? "UNLOCKED" : "LOCKED"}
           </div>
         )}
 
-        {/* Technical Breakdown Section */}
+        {/* Technical Breakdown */}
         {technicalItems.length > 0 && (
           <div className="lg:col-span-3 bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
             <div className="flex items-center gap-3 mb-6">
@@ -710,18 +732,28 @@ SIM-Lock Status: ${isSimUnlocked ? "UNLOCKED" : "LOCKED"}
             undefined
           }
         />
-        <SmartInvoicePDF
-          data={scanResult}
-          id={invoiceElementId}
-          customerName="Alexander Wright"
-          customerEmail="alex.wright@example.com"
-        />
+        {invoiceFormData && (
+          <SmartInvoicePDF
+            data={scanResult}
+            id={invoiceElementId}
+            invoiceData={invoiceFormData}
+          />
+        )}
       </div>
+
+      {/* Invoice Modal */}
+      <InvoiceModal
+        isOpen={isInvoiceModalOpen}
+        onClose={() => setIsInvoiceModalOpen(false)}
+        onGenerate={handleGenerateInvoice}
+        scanResult={scanResult}
+        isGenerating={isInvoiceGenerating}
+      />
     </div>
   );
 };
 
-/* Helper Components - UNCHANGED */
+/* Helper Components */
 function StatusTile({
   icon,
   title,
