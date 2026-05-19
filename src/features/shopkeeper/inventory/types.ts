@@ -264,3 +264,27 @@ export interface CreateFromBarcodeBulkInput {
   userId: string;
   barcodes: BulkBarcodeItem[];
 }
+
+export type Customer = {
+  _id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  address: string;
+  shopkeeperId: string;
+
+  // optional fields
+  salesMethod?: string;
+  actualSalePrice?: number;
+
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CustomersResponse = {
+  success: boolean;
+  message: string;
+  statusCode: number;
+  data: Customer[];
+};

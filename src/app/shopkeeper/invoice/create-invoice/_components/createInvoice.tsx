@@ -4,18 +4,9 @@ import React, { useState, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import {
-  Store,
-  User,
-  Download,
-  Package,
-  Send,
-  Loader2,
-  Search,
-} from "lucide-react";
+import { Store, User, Package, Loader2, Search } from "lucide-react";
 import { pdf } from "@react-pdf/renderer";
 import {
-  PDFDownloadLink,
   Document,
   Page,
   Text,
@@ -29,6 +20,18 @@ import {
 } from "@/features/shopkeeper/inventory/hooks/useInventory";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
+import { useMyProfile } from "@/features/shopkeeper/settings/hooks/useSettings";
+import {
+  useCreateInvoiceUser,
+  useMyInvoiceGet,
+} from "@/features/shopkeeper/inventory/hooks/useInvoiceGenaretor";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 // --- Enhanced PDF Styles (Professional Layout) ---
 const pdfStyles = StyleSheet.create({
@@ -56,7 +59,7 @@ const pdfStyles = StyleSheet.create({
     paddingBottom: 20,
   },
   logo: {
-    width: 120, // Adjust based on your logo aspect ratio
+    width: 120,
   },
   invoiceTitle: {
     fontSize: 24,
@@ -73,9 +76,10 @@ const pdfStyles = StyleSheet.create({
   infoBox: {
     flex: 1,
     border: 1,
-    borderColor: "#e2e8f0",
+    borderColor: "#e69d6c",
     borderRadius: 12,
     overflow: "hidden",
+    backgroundColor: "#f8fafc",
   },
   infoLabel: {
     backgroundColor: "#f97316",
@@ -102,8 +106,6 @@ const pdfStyles = StyleSheet.create({
     color: "#0f172a",
     marginBottom: 4,
   },
-
-  // Table Styles
   tableHeader: {
     flexDirection: "row",
     backgroundColor: "#f8fafc",
@@ -130,7 +132,6 @@ const pdfStyles = StyleSheet.create({
   },
   colId: { width: "20%", textAlign: "center" },
   colPrice: { width: "25%", textAlign: "right" },
-
   productImg: {
     width: 35,
     height: 35,
@@ -147,9 +148,8 @@ const pdfStyles = StyleSheet.create({
     fontSize: 7,
     color: "#64748b",
   },
-
   totalSection: {
-    marginTop: 30,
+    marginTop: 20,
     flexDirection: "row",
     justifyContent: "flex-end",
   },
@@ -158,17 +158,49 @@ const pdfStyles = StyleSheet.create({
     color: "white",
     padding: 15,
     borderRadius: 12,
-    width: 220,
-    textAlign: "right",
+    width: 240,
   },
-  totalLabel: {
+  summaryRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 6,
+  },
+  summaryLabel: {
     fontSize: 8,
     textTransform: "uppercase",
     color: "#94a3b8",
-    marginBottom: 4,
   },
-  totalAmount: { fontSize: 18, fontWeight: "bold" },
-
+  summaryValue: {
+    fontSize: 10,
+    fontWeight: "bold",
+  },
+  divider: {
+    height: 1,
+    backgroundColor: "#334155",
+    marginVertical: 6,
+  },
+  statusBadgePaid: {
+    backgroundColor: "#22c55e",
+    color: "white",
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    fontSize: 10,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginTop: 6,
+  },
+  statusBadgeDue: {
+    backgroundColor: "#ef4444",
+    color: "white",
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    fontSize: 10,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginTop: 6,
+  },
   footer: {
     position: "absolute",
     bottom: 30,
@@ -183,7 +215,16 @@ const pdfStyles = StyleSheet.create({
   },
 });
 
-const InvoicePDF = ({ customer, items, total }: any) => (
+const InvoicePDF = ({
+  customer,
+  items,
+  total,
+  shopkeeper,
+  alreadyPaid,
+  dueAmount,
+  paymentType,
+  card,
+}: any) => (
   <Document>
     <Page size="A4" style={pdfStyles.page}>
       <View style={pdfStyles.headerBar} />
@@ -205,22 +246,36 @@ const InvoicePDF = ({ customer, items, total }: any) => (
           <Text style={pdfStyles.infoLabel}>Billed To</Text>
           <View style={pdfStyles.infoContent}>
             <Text style={pdfStyles.customerName}>
-              {customer.name || "Valued Customer"}
+              {customer.firstName || "Valued Customer"}
             </Text>
-            <Text>{customer.email || "N/A"}</Text>
-            <Text>{customer.phone || "N/A"}</Text>
-            <Text style={{ fontSize: 8, color: "#64748b", marginTop: 4 }}>
-              {customer.address || "N/A"}
+            <Text style={pdfStyles.customerName}>
+              {customer.lastName || "Valued Customer"}
+            </Text>
+            <Text>Email: {customer.email || "N/A"}</Text>
+            <Text>Phone: {customer.phone || "N/A"}</Text>
+            <Text>Address: {customer.address || "N/A"}</Text>
+            <Text
+              style={{
+                marginTop: 4,
+                fontSize: 8,
+                color: "#475569",
+                fontWeight: "bold",
+              }}
+            >
+              Payment Method: {paymentType.toUpperCase()}{" "}
+              {paymentType === "card" && card ? `(${card})` : ""}
             </Text>
           </View>
         </View>
         <View style={pdfStyles.infoBox}>
           <Text style={pdfStyles.infoLabelBlue}>Store Info</Text>
           <View style={pdfStyles.infoContent}>
-            <Text style={pdfStyles.customerName}>GADGET GALAXY</Text>
-            <Text>Bashundhara City, Dhaka</Text>
-            <Text>shop@gadgetgalaxy.com</Text>
-            <Text>+880 1234-567890</Text>
+            <Text style={pdfStyles.customerName}>
+              {shopkeeper?.shopName || "N/A"}
+            </Text>
+            <Text>{shopkeeper?.shopAddress || "N/A"}</Text>
+            <Text>{shopkeeper?.email || "N/A"}</Text>
+            <Text>{shopkeeper?.phone || "N/A"}</Text>
           </View>
         </View>
       </View>
@@ -243,16 +298,48 @@ const InvoicePDF = ({ customer, items, total }: any) => (
               </Text>
             </View>
           </View>
-          <Text style={pdfStyles.colId}>#DEV-{item.id}</Text>
+          <Text style={pdfStyles.colId}>{item.imeiNumber}</Text>
           <Text style={pdfStyles.colPrice}>${item.price.toFixed(2)}</Text>
         </View>
       ))}
 
-      {/* Total Section */}
+      {/* Total Calculation Section */}
       <View style={pdfStyles.totalSection}>
         <View style={pdfStyles.totalBox}>
-          <Text style={pdfStyles.totalLabel}>Total Amount Due</Text>
-          <Text style={pdfStyles.totalAmount}>${total.toLocaleString()}</Text>
+          <View style={pdfStyles.summaryRow}>
+            <Text style={pdfStyles.summaryLabel}>Sub Total:</Text>
+            <Text style={pdfStyles.summaryValue}>
+              ${total.toLocaleString()}
+            </Text>
+          </View>
+          <View style={pdfStyles.summaryRow}>
+            <Text style={pdfStyles.summaryLabel}>Amount Paid:</Text>
+            <Text style={pdfStyles.summaryValue}>
+              ${alreadyPaid.toLocaleString()}
+            </Text>
+          </View>
+          <View style={pdfStyles.divider} />
+          <View style={pdfStyles.summaryRow}>
+            <Text
+              style={[
+                pdfStyles.summaryLabel,
+                { color: "white", fontWeight: "bold" },
+              ]}
+            >
+              Balance Due:
+            </Text>
+            <Text style={[pdfStyles.summaryValue, { fontSize: 12 }]}>
+              ${dueAmount.toLocaleString()}
+            </Text>
+          </View>
+
+          {dueAmount <= 0 ? (
+            <Text style={pdfStyles.statusBadgePaid}>PAID</Text>
+          ) : (
+            <Text style={pdfStyles.statusBadgeDue}>
+              DUE: ${dueAmount.toLocaleString()}
+            </Text>
+          )}
         </View>
       </View>
 
@@ -266,18 +353,30 @@ const InvoicePDF = ({ customer, items, total }: any) => (
 
 export default function CreateInvoice() {
   const { data: inventoryData, isLoading, isError } = useMyInventory();
+  const { data: profileData } = useMyProfile();
   const { mutate: createInvoice, isPending } = useCreateInvoice();
-  const session = useSession();
   const [searchQuery, setSearchQuery] = useState("");
-  const shopkeeper = session.data?.user;
+  const seesion = useSession();
+  const shopkeeper = seesion.data?.user.id;
   const [selectedDeviceIds, setSelectedDeviceIds] = useState<string[]>([]);
+  const { mutate: createInvoiceUser } = useCreateInvoiceUser();
+  const getInvoiceUser = useMyInvoiceGet(shopkeeper || "223423423");
+  const [selectedCustomerId, setSelectedCustomerId] = useState("");
+
   const [customer, setCustomer] = useState({
-    name: "",
+    firstName: "",
+    lastName: "",
     email: "",
     phone: "",
     card: "",
     address: "",
   });
+
+  const customers = getInvoiceUser?.data?.data || [];
+
+  // Custom Dynamic Input Payment states
+  const [paymentType, setPaymentType] = useState("cash");
+  const [alreadyPaid, setAlreadyPaid] = useState<number>(0);
 
   const toggleDevice = (id: string) => {
     setSelectedDeviceIds((prev) =>
@@ -318,6 +417,12 @@ export default function CreateInvoice() {
 
   const totalPrice = selectedDevicesData.reduce((sum, d) => sum + d.price, 0);
 
+  // Balanced calculation state handler logic
+  const dueAmount = useMemo(() => {
+    const calculatedDue = totalPrice - alreadyPaid;
+    return calculatedDue < 0 ? 0 : calculatedDue;
+  }, [totalPrice, alreadyPaid]);
+
   const handleCreateInvoice = async () => {
     if (!selectedDevicesData.length) return;
 
@@ -326,18 +431,27 @@ export default function CreateInvoice() {
         customer={customer}
         items={selectedDevicesData}
         total={totalPrice}
+        shopkeeper={profileData?.data}
+        alreadyPaid={alreadyPaid}
+        dueAmount={dueAmount}
+        paymentType={paymentType}
+        card={customer.card}
       />
     );
 
     const blob = await pdf(doc).toBlob();
 
-    const file = new File([blob], `invoice_${customer.name || "gadget"}.pdf`, {
-      type: "application/pdf",
-    });
+    const file = new File(
+      [blob],
+      `invoice_${customer.firstName || "gadget"}.pdf`,
+      {
+        type: "application/pdf",
+      },
+    );
 
     createInvoice(
       {
-        shopkeeperId: shopkeeper?.id || "223423423",
+        shopkeeperId: shopkeeper || "223423423",
         type: "Custom invoice",
         invoice: file,
       },
@@ -350,12 +464,23 @@ export default function CreateInvoice() {
         },
       },
     );
+
+    if (!selectedCustomerId) {
+      createInvoiceUser({
+        firstName: customer.firstName,
+        lastName: customer.lastName,
+        email: customer.email,
+        phone: customer.phone,
+        address: customer.address,
+        shopkeeperId: shopkeeper || "223423423",
+      });
+    }
   };
 
   return (
     <div className="px-4 py-8 md:px-8 lg:px-10 font-poppins min-h-screen bg-background">
       <div className="mx-auto space-y-8">
-        {/* Header Content (Keeping your updated style) */}
+        {/* Header Content */}
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-black text-foreground tracking-tight">
             Invoice Generator
@@ -367,28 +492,141 @@ export default function CreateInvoice() {
           </div>
         </div>
 
-        {/* Input Cards (Your Style) */}
+        {/* Input Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="md:col-span-2 bg-card border border-border rounded-[28px] p-8 shadow-sm space-y-6">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center text-orange-600">
-                <User size={20} />
+            <div className="flex justify-between">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center text-orange-600">
+                  <User size={20} />
+                </div>
+                <p className="text-xl font-black text-foreground">
+                  Customer Information
+                </p>
               </div>
-              <p className="text-xl font-black text-foreground">
-                Customer Information
-              </p>
-            </div>
 
+              <div className="space-y-3 mb-6">
+                <label className="text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">
+                  Select Existing Customer
+                </label>
+
+                <Select
+                  value={selectedCustomerId}
+                  onValueChange={(value) => {
+                    setSelectedCustomerId(value);
+
+                    const selectedCustomer = customers.find(
+                      (customer: any) => customer._id === value,
+                    );
+
+                    if (selectedCustomer) {
+                      setCustomer({
+                        firstName: selectedCustomer.firstName || "",
+                        lastName: selectedCustomer.lastName || "",
+                        email: selectedCustomer.email || "",
+                        phone: selectedCustomer.phone || "",
+                        address: selectedCustomer.address || "",
+                        card: "",
+                      });
+                    }
+                  }}
+                >
+                  <SelectTrigger
+                    className="
+        h-14
+        w-full
+        rounded-2xl
+        border border-slate-200
+        bg-white
+        px-4
+        text-sm
+        font-semibold
+        text-slate-700
+        shadow-sm
+        transition-all
+        duration-200
+        hover:border-orange-300
+        hover:shadow-md
+        focus:ring-2
+        focus:ring-orange-500/20
+        focus:border-orange-500
+        dark:bg-slate-900
+        dark:border-slate-700
+        dark:text-white
+      "
+                  >
+                    <SelectValue placeholder="Choose customer" />
+                  </SelectTrigger>
+
+                  <SelectContent
+                    className="
+        rounded-2xl
+        border
+        border-slate-200
+        bg-white
+        shadow-2xl
+        dark:bg-slate-900
+        dark:border-slate-700
+      "
+                  >
+                    {customers.map((customer: any) => (
+                      <SelectItem
+                        key={customer._id}
+                        value={customer._id}
+                        className="
+            cursor-pointer
+            rounded-xl
+            py-3
+            text-sm
+            font-medium
+            text-slate-700
+            transition-all
+            focus:bg-orange-50
+            focus:text-orange-600
+            dark:text-slate-200
+            dark:focus:bg-slate-800
+          "
+                      >
+                        <div className="flex flex-col">
+                          <span className="font-semibold">
+                            {customer.firstName} {customer.lastName}
+                          </span>
+
+                          <span className="text-xs text-slate-400">
+                            {customer.email}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <label className="text-xs font-black text-muted-foreground uppercase tracking-widest">
-                  Full Name
+                  First Name
                 </label>
                 <Input
+                  value={customer.firstName}
                   className="rounded-2xl h-12 border-primary bg-background font-bold focus-visible:ring-primary"
                   placeholder="Mehedi Hasan Shishir"
                   onChange={(e) =>
-                    setCustomer({ ...customer, name: e.target.value })
+                    setCustomer({ ...customer, firstName: e.target.value })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-black text-muted-foreground uppercase tracking-widest">
+                  {" "}
+                  Last Name
+                </label>
+                <Input
+                  value={customer.lastName}
+                  className="rounded-2xl h-12 border-primary bg-background font-bold focus-visible:ring-primary"
+                  placeholder="Last Name"
+                  onChange={(e) =>
+                    setCustomer({ ...customer, lastName: e.target.value })
                   }
                 />
               </div>
@@ -397,6 +635,7 @@ export default function CreateInvoice() {
                   Email Address
                 </label>
                 <Input
+                  value={customer.email}
                   type="email"
                   className="rounded-2xl h-12 border-primary bg-background font-bold"
                   placeholder="shishir@example.com"
@@ -410,7 +649,8 @@ export default function CreateInvoice() {
                   Phone
                 </label>
                 <Input
-                  type="number"
+                  value={customer.phone}
+                  type="text"
                   className="rounded-2xl h-12 border-primary bg-background font-bold"
                   placeholder="+880 1XXX XXXXXX"
                   onChange={(e) =>
@@ -423,6 +663,7 @@ export default function CreateInvoice() {
                   Billing Address
                 </label>
                 <Input
+                  value={customer.address}
                   className="rounded-2xl h-12 border-primary bg-background font-bold"
                   placeholder="Dhaka, Bangladesh"
                   onChange={(e) =>
@@ -430,21 +671,93 @@ export default function CreateInvoice() {
                   }
                 />
               </div>
+
+              {/* Payment Select UI Field Implementation */}
+              <div className="space-y-2">
+                <label className="text-xs font-black text-muted-foreground uppercase tracking-widest">
+                  Payment Type
+                </label>
+                <select
+                  value={paymentType}
+                  onChange={(e) => setPaymentType(e.target.value)}
+                  className="flex w-full rounded-2xl h-12 border border-primary bg-background px-3 py-2 text-sm font-bold shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <option value="cash">Cash</option>
+                  <option value="card">Card</option>
+                </select>
+              </div>
+
+              {/* Already Paid Input Box Field */}
+              <div className="space-y-2">
+                <label className="text-xs font-black text-muted-foreground uppercase tracking-widest">
+                  Already Paid
+                </label>
+                <Input
+                  type="number"
+                  className="rounded-2xl h-12 border-primary bg-background font-bold"
+                  placeholder="0.00"
+                  value={alreadyPaid || ""}
+                  onChange={(e) => setAlreadyPaid(Number(e.target.value))}
+                />
+              </div>
+
+              {/* Conditional Card field wrapper layer */}
+              {paymentType === "card" && (
+                <div className="space-y-2 sm:col-span-2">
+                  <label className="text-xs font-black text-muted-foreground uppercase tracking-widest">
+                    Card Number
+                  </label>
+                  <Input
+                    type="text"
+                    className="rounded-2xl h-12 border-primary bg-background font-bold"
+                    placeholder="xxxx-xxxx-xxxx-xxxx"
+                    value={customer.card}
+                    onChange={(e) =>
+                      setCustomer({ ...customer, card: e.target.value })
+                    }
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Calculations Status Grid view matching original structure style */}
+            <div className="grid grid-cols-2 gap-4 pt-2 border-t border-dashed border-border">
+              <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-xl">
+                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-wider block">
+                  Sub-Total Amount
+                </span>
+                <span className="text-lg font-black text-slate-800 dark:text-slate-200">
+                  ${totalPrice.toLocaleString()}
+                </span>
+              </div>
+              <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-xl">
+                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-wider block">
+                  Remaining Due
+                </span>
+                <span
+                  className={`text-lg font-black ${dueAmount === 0 ? "text-green-600" : "text-red-500"}`}
+                >
+                  ${dueAmount.toLocaleString()}
+                </span>
+              </div>
             </div>
           </div>
 
           {/* Shop Card */}
-          <div className="bg-[#1e293b] rounded-[28px] p-8 text-white flex flex-col justify-between shadow-lg">
+          <div className="bg-card rounded-[28px] p-8 text-foreground flex flex-col justify-between shadow-lg">
             <div className="space-y-4">
               <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center text-sky-400">
                 <Store size={24} />
               </div>
               <div>
                 <h2 className="text-2xl font-black tracking-tight">
-                  GADGET GALAXY
+                  {profileData?.data?.shopName || "N/A"}
                 </h2>
-                <p className="text-xs font-bold text-sky-400/80 uppercase tracking-widest">
-                  Premium Merchant
+                <p className="text-lg text-slate-300">
+                  {profileData?.data?.email || "N/A"}
+                </p>
+                <p className="text-lg text-slate-300">
+                  {profileData?.data?.phone || "N/A"}
                 </p>
               </div>
             </div>
@@ -453,11 +766,15 @@ export default function CreateInvoice() {
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">
                   Store Address
                 </p>
-                <p className="text-sm font-bold">Bashundhara City, Dhaka</p>
+                <p className="text-sm font-bold">
+                  {profileData?.data?.shopAddress || "N/A"}
+                </p>
               </div>
             </div>
           </div>
         </div>
+
+        {/* Search Field */}
         <div>
           <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -470,6 +787,7 @@ export default function CreateInvoice() {
             />
           </div>
         </div>
+
         {/* Device Table */}
         <div className="rounded-[32px] border border-border bg-card overflow-hidden shadow-sm">
           <table className="w-full text-left">
@@ -481,57 +799,83 @@ export default function CreateInvoice() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {devices.map((device) => {
-                const isSelected = selectedDeviceIds.includes(device.id);
-                return (
-                  <tr
-                    key={device.id}
-                    className={`group transition-all hover:bg-slate-50/50 cursor-pointer ${
-                      isSelected ? "bg-orange-50/40" : ""
-                    }`}
-                    onClick={() => toggleDevice(device.id)}
+              {isLoading ? (
+                <tr>
+                  <td
+                    colSpan={3}
+                    className="px-8 py-6 text-center text-sm font-bold text-muted-foreground"
                   >
-                    {/* Checkbox column */}
-                    <td
-                      className="px-8 py-6"
-                      onClick={(e) => e.stopPropagation()} // prevent double toggle
+                    Loading inventory data...
+                  </td>
+                </tr>
+              ) : isError ? (
+                <tr>
+                  <td
+                    colSpan={3}
+                    className="px-8 py-6 text-center text-sm font-bold text-destructive"
+                  >
+                    Failed to fetch products.
+                  </td>
+                </tr>
+              ) : devices.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={3}
+                    className="px-8 py-6 text-center text-sm font-bold text-muted-foreground"
+                  >
+                    No devices match search criteria.
+                  </td>
+                </tr>
+              ) : (
+                devices.map((device) => {
+                  const isSelected = selectedDeviceIds.includes(device.id);
+                  return (
+                    <tr
+                      key={device.id}
+                      className={`group transition-all hover:bg-slate-50/50 cursor-pointer ${
+                        isSelected ? "bg-orange-50/40" : ""
+                      }`}
+                      onClick={() => toggleDevice(device.id)}
                     >
-                      <Checkbox
-                        className="h-6 w-6 rounded-lg border-primary focus:ring-primary"
-                        checked={isSelected}
-                        onCheckedChange={() => toggleDevice(device.id)}
-                      />
-                    </td>
+                      <td
+                        className="px-8 py-6"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Checkbox
+                          className="h-6 w-6 rounded-lg border-primary focus:ring-primary"
+                          checked={isSelected}
+                          onCheckedChange={() => toggleDevice(device.id)}
+                        />
+                      </td>
 
-                    {/* Device info */}
-                    <td className="px-8 py-6 flex items-center gap-4">
-                      <img
-                        src={device.image}
-                        className="w-12 h-12 rounded-2xl object-cover"
-                        alt={device.name}
-                      />
-                      <div>
-                        <p className="font-black text-foreground">
-                          {device.name}
-                        </p>
-                        <p className="text-xs font-bold text-muted-foreground">
-                          #DEV-{device.id}
-                        </p>
-                      </div>
-                    </td>
+                      <td className="px-8 py-6 flex items-center gap-4">
+                        <img
+                          src={device.image}
+                          className="w-12 h-12 rounded-2xl object-cover"
+                          alt={device.name}
+                        />
+                        <div>
+                          <p className="font-black text-foreground">
+                            {device.name}
+                          </p>
+                          <p className="text-xs font-bold text-muted-foreground">
+                            #DEV-{device.id}
+                          </p>
+                        </div>
+                      </td>
 
-                    {/* Price */}
-                    <td className="px-8 py-6 text-right font-black text-lg">
-                      ${device.price}
-                    </td>
-                  </tr>
-                );
-              })}
+                      <td className="px-8 py-6 text-right font-black text-lg">
+                        ${device.price}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
 
-        {/* Action Bar with updated PDF Link */}
+        {/* Action Bar */}
         <div className="sticky bottom-6 flex justify-between items-center bg-card border border-border p-6 rounded-[32px] shadow-2xl">
           <div className="flex items-center gap-6 px-4">
             <div className="w-14 h-14 bg-green-100 rounded-2xl flex items-center justify-center text-green-600">
@@ -547,39 +891,12 @@ export default function CreateInvoice() {
             </div>
           </div>
 
-          {/* {typeof window !== "undefined" && (
-            <PDFDownloadLink
-              document={
-                <InvoicePDF
-                  customer={customer}
-                  items={selectedDevicesData}
-                  total={totalPrice}
-                />
-              }
-              fileName={`invoice_${customer.name || "gadget"}.pdf`}
-            >
-              {({ loading }) => (
-                <Button
-                  disabled={selectedDeviceIds.length === 0 || loading}
-                  className="bg-primary hover:bg-primary/90 h-16 px-10 text-sm font-black rounded-full shadow-lg flex items-center gap-3 uppercase tracking-wider"
-                >
-                  {loading ? (
-                    "Preparing PDF..."
-                  ) : (
-                    <>
-                      <Download size={20} /> Generate Report
-                    </>
-                  )}
-                </Button>
-              )}
-            </PDFDownloadLink>
-          )} */}
           <Button
             onClick={handleCreateInvoice}
             disabled={selectedDeviceIds.length === 0 || isPending}
             className="bg-primary hover:bg-primary/90 h-16 px-10 text-sm font-black rounded-full shadow-lg flex items-center gap-3 uppercase tracking-wider"
           >
-            Send Invoice {isPending && <Loader2 className="animate-spin " />}
+            Send Invoice {isPending && <Loader2 className="animate-spin" />}
           </Button>
         </div>
       </div>
