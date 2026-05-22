@@ -1265,6 +1265,7 @@ import { useCreateInvoice } from "@/features/shopkeeper/inventory/hooks/useInven
 // --------------------------------------------------
 // PDF STYLES
 // --------------------------------------------------
+// --- Ultra-Modern PDF Styles (Premium Layout) ---
 const pdfStyles = StyleSheet.create({
   page: {
     padding: 40,
@@ -1281,7 +1282,6 @@ const pdfStyles = StyleSheet.create({
     height: 6,
     backgroundColor: "#0f172a",
   },
-
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -1289,16 +1289,13 @@ const pdfStyles = StyleSheet.create({
     marginBottom: 35,
     marginTop: 10,
   },
-
   logo: {
     width: 130,
     objectFit: "contain",
   },
-
   receiptMeta: {
     textAlign: "right",
   },
-
   title: {
     fontSize: 22,
     fontWeight: "bold",
@@ -1306,16 +1303,13 @@ const pdfStyles = StyleSheet.create({
     letterSpacing: 1,
     marginBottom: 4,
   },
-
   dateText: {
     fontSize: 9,
     color: "#64748b",
   },
-
   section: {
     marginBottom: 24,
   },
-
   sectionTitle: {
     fontSize: 10,
     fontWeight: "bold",
@@ -1327,12 +1321,10 @@ const pdfStyles = StyleSheet.create({
     borderBottomColor: "#cbd5e1",
     paddingBottom: 4,
   },
-
   infoRow: {
     flexDirection: "row",
     gap: 20,
   },
-
   infoBox: {
     flex: 1,
     backgroundColor: "#f8fafc",
@@ -1341,7 +1333,6 @@ const pdfStyles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#f1f5f9",
   },
-
   infoBoxTitle: {
     fontSize: 9,
     fontWeight: "bold",
@@ -1350,28 +1341,24 @@ const pdfStyles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
-
   label: {
     fontSize: 7.5,
     color: "#64748b",
     textTransform: "uppercase",
     marginBottom: 2,
   },
-
   value: {
     color: "#1e293b",
     fontSize: 9.5,
     fontWeight: "bold",
     marginBottom: 8,
   },
-
   storeValue: {
     color: "#334155",
     fontSize: 9.5,
     lineHeight: 1.5,
     marginBottom: 2,
   },
-
   tableHeader: {
     flexDirection: "row",
     backgroundColor: "#0f172a",
@@ -1384,7 +1371,6 @@ const pdfStyles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
-
   row: {
     flexDirection: "row",
     borderBottomWidth: 1,
@@ -1510,7 +1496,7 @@ const pdfStyles = StyleSheet.create({
 });
 
 // --------------------------------------------------
-// PDF COMPONENT
+// MODERN RECEIPT PDF COMPONENT WITH PRICE
 // --------------------------------------------------
 const PurchaseReceiptPDF = ({ customer, items, shopkeeper, total }: any) => (
   <Document>
@@ -1542,6 +1528,7 @@ const PurchaseReceiptPDF = ({ customer, items, shopkeeper, total }: any) => (
 
       {/* CUSTOMER + SHOP */}
       <View style={[pdfStyles.section, pdfStyles.infoRow]}>
+        {/* Customer Information Card */}
         <View style={pdfStyles.infoBox}>
           <Text style={pdfStyles.infoBoxTitle}>Customer Details</Text>
 
@@ -1578,7 +1565,7 @@ const PurchaseReceiptPDF = ({ customer, items, shopkeeper, total }: any) => (
         </View>
       </View>
 
-      {/* ITEMS */}
+      {/* ITEMS TABLE SECTION */}
       <View style={pdfStyles.section}>
         <Text style={pdfStyles.sectionTitle}>Purchased Devices</Text>
 
@@ -1589,7 +1576,7 @@ const PurchaseReceiptPDF = ({ customer, items, shopkeeper, total }: any) => (
           <Text style={pdfStyles.colPrice}>Price</Text>
         </View>
 
-        {items.map((item: any, index: number) => (
+        {items?.map((item: any, index: number) => (
           <View key={index} style={pdfStyles.row}>
             <View style={pdfStyles.colProduct}>
               <Text style={pdfStyles.productName}>{item.name}</Text>
@@ -1684,7 +1671,6 @@ export default function CreatePurchaseReceipt() {
       },
     ]);
   };
-
   // REMOVE ITEM
   const removeItem = (index: number) => {
     const updated = [...items];
@@ -1873,6 +1859,7 @@ export default function CreatePurchaseReceipt() {
                     placeholder="Email"
                     className="rounded-2xl h-12 border-primary bg-background font-bold focus-visible:ring-primary"
                     value={customer.email}
+                    type="email"
                     onChange={(e) =>
                       setCustomer({
                         ...customer,
