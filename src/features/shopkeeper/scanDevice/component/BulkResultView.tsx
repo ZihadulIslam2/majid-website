@@ -31,6 +31,7 @@ import {
   Clock,
 } from "lucide-react";
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import { CertificatePDF } from "./CertificatePDF";
 import {
   BatchImeiResponse,
@@ -147,6 +148,9 @@ export const BulkResultView = ({
   const [isRegenerating, setIsRegenerating] = useState(false);
   const selectRef = useRef<HTMLDivElement>(null);
 
+  const { status } = useSession();
+  const isGuest = status === "unauthenticated";
+
   const batchRows = useMemo(() => batchResult?.data ?? [], [batchResult]);
   const successfulBatchRows = useMemo(
     () =>
@@ -191,7 +195,10 @@ export const BulkResultView = ({
   const checksArray = currentData?.checks
     ? Object.values(currentData.checks)
     : [];
-  const riskScore = currentData?.riskMeter?.score || 0;
+  const riskScore =
+    typeof currentData?.riskMeter === "number"
+      ? currentData.riskMeter
+      : currentData?.riskMeter?.score || 0;
   const riskInfo = getRiskLabel(riskScore);
 
   // Get check statuses
@@ -485,21 +492,22 @@ SIM-Lock Status: ${isSimUnlocked ? "UNLOCKED" : "LOCKED"}
           <Copy size={22} />
         </button>
 
-        {/* Mobile Action Buttons */}
-        <div className="mt-6 space-y-2">
-          <button
-            onClick={handleDownloadSelectedBulkCertificate}
-            disabled={isDownloading}
-            className="w-full py-2.5 rounded-xl bg-[#84CC16] text-white font-bold text-sm shadow-lg transition flex items-center justify-center gap-2"
-          >
-            {isDownloading ? (
-              <Loader2 size={14} className="animate-spin" />
-            ) : (
-              <Download size={14} />
-            )}
-            Download Certificate
-          </button>
-        </div>
+        {!isGuest && (
+          <div className="mt-6 space-y-2">
+            <button
+              onClick={handleDownloadSelectedBulkCertificate}
+              disabled={isDownloading}
+              className="w-full py-2.5 rounded-xl bg-[#84CC16] text-white font-bold text-sm shadow-lg transition flex items-center justify-center gap-2"
+            >
+              {isDownloading ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <Download size={14} />
+              )}
+              Download Certificate
+            </button>
+          </div>
+        )}
 
         {copied && (
           <div className="absolute top-3 right-3 bg-slate-800 text-white text-[10px] px-2 py-1 rounded-full animate-pulse">

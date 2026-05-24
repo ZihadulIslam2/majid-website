@@ -13,7 +13,7 @@ export async function proxy(request: NextRequest) {
 
   // Protect shopkeeper routes
   if (pathname.startsWith("/shopkeeper")) {
-    if (isGuest) {
+    if (isGuest && pathname !== "/shopkeeper/scan-device") {
       const callbackUrl = encodeURIComponent(pathname);
       return NextResponse.redirect(
         new URL(`/auth/login?callbackUrl=${callbackUrl}`, request.url),

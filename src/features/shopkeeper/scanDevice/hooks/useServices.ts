@@ -1,5 +1,6 @@
 // hooks/useServices.ts
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import { getServicesApi } from "../../scanDevice/api/scanDevice.api";
 import {
   IMEIService,
@@ -7,6 +8,7 @@ import {
 } from "../../scanDevice/types/scanDevice.types";
 
 export const useServices = (queryServiceId: string | null) => {
+  const { status } = useSession();
   const [serviceCategories, setServiceCategories] = useState<ServiceCategory[]>(
     [],
   );
@@ -23,8 +25,19 @@ export const useServices = (queryServiceId: string | null) => {
       try {
         const response = await getServicesApi();
         if (response.success && response.data) {
-          setServiceCategories(response.data);
-          const allServices = response.data.flatMap((cat) => cat.services);
+          let categories = response.data;
+          // Filter if guest
+          if (status !== "authenticated") {
+            categories = categories
+              .map((cat) => ({
+                ...cat,
+                services: cat.services.filter((svc) => svc.isFree),
+              }))
+              .filter((cat) => cat.services.length > 0);
+          }
+
+          setServiceCategories(categories);
+          const allServices = categories.flatMap((cat) => cat.services);
           setServices(allServices);
 
           if (queryServiceId) {
@@ -34,10 +47,14 @@ export const useServices = (queryServiceId: string | null) => {
             if (found) {
               setSelectedService(found);
             } else {
-              setSelectedService(null);
+              // Try to select first available service if requested is not found
+              const firstSvc = allServices[0] || null;
+              setSelectedService(firstSvc);
             }
           } else {
-            setSelectedService(null);
+            // Select first available service by default if not logged in or no query param
+            const firstSvc = allServices[0] || null;
+            setSelectedService(firstSvc);
           }
         }
       } catch (err) {
@@ -47,7 +64,7 @@ export const useServices = (queryServiceId: string | null) => {
       }
     };
     fetchServices();
-  }, [queryServiceId]);
+  }, [queryServiceId, status]);
 
   return {
     serviceCategories,

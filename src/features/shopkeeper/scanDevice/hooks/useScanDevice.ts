@@ -1,6 +1,5 @@
-// hooks/useScanDevice.ts - সম্পূর্ণ আপডেটেড
-
 import { useState, useCallback } from "react";
+import { useSession } from "next-auth/react";
 import {
   checkIMEIApi,
   checkFavouriteIMEIApi,
@@ -11,8 +10,15 @@ import {
   BatchImeiItemResult,
   FavouriteIMEIData,
 } from "../../scanDevice/types/scanDevice.types";
+import {
+  getGuestUsageCount,
+  incrementGuestUsageCount,
+} from "@/lib/guest-limit";
 
 export const useScanDevice = () => {
+  const { status } = useSession();
+  const isAuthenticated = status === "authenticated";
+  const [showGuestLimitModal, setShowGuestLimitModal] = useState(false);
   const [imei, setImei] = useState("");
   const [isScanning, setIsScanning] = useState(false);
   const [scanResult, setScanResult] = useState<IMEIResult | null>(null);
@@ -67,6 +73,19 @@ export const useScanDevice = () => {
         return;
       }
 
+      if (!isAuthenticated) {
+        // Check guest usage limit (max 2 free reports per device)
+        const usageCount = await getGuestUsageCount();
+        if (usageCount >= 2) {
+          setError(
+            "You have used your 2 free reports. Please login to continue.",
+          );
+          setShowGuestLimitModal(true);
+          setIsScanning(false);
+          return;
+        }
+      }
+
       setIsScanning(true);
       setScanResult(null);
       setFavouriteResult(null);
@@ -98,13 +117,16 @@ export const useScanDevice = () => {
           ) {
             const firstItem = response.data[0];
             if (firstItem.ok && firstItem.data) {
-              setTimeout(() => {
+              setTimeout(async () => {
                 setFavouriteResult(firstItem.data);
                 setSingleReportMeta({
                   provider: firstItem.data.bundledServiceName,
                   serviceId: firstItem.data.bundledServiceId,
                 });
                 setIsScanning(false);
+                if (!isAuthenticated) {
+                  await incrementGuestUsageCount();
+                }
                 onComplete?.();
               }, 4500);
             } else {
@@ -148,8 +170,11 @@ export const useScanDevice = () => {
               data: bulkItems,
             };
             setBatchResult(batchResponse);
-            setTimeout(() => {
+            setTimeout(async () => {
               setIsScanning(false);
+              if (!isAuthenticated) {
+                await incrementGuestUsageCount();
+              }
               onComplete?.();
             }, 4500);
           } else {
@@ -177,7 +202,7 @@ export const useScanDevice = () => {
                 ...firstItem.data,
                 imei: firstItem.imei || firstItem.data.imei || imeiList[0],
               };
-              setTimeout(() => {
+              setTimeout(async () => {
                 setScanResult(resultWithIMEI);
                 setSingleReportMeta({
                   provider:
@@ -186,6 +211,9 @@ export const useScanDevice = () => {
                   serviceId: firstItem.serviceId || serviceId,
                 });
                 setIsScanning(false);
+                if (!isAuthenticated) {
+                  await incrementGuestUsageCount();
+                }
                 onComplete?.();
               }, 4500);
             } else {
@@ -211,7 +239,7 @@ export const useScanDevice = () => {
         setIsScanning(false);
       }
     },
-    [parseIMEIInput, isFavouriteService, isValidIMEI],
+    [parseIMEIInput, isFavouriteService, isValidIMEI, isAuthenticated],
   );
 
   const handleRegenerateScan = useCallback(
@@ -262,13 +290,16 @@ export const useScanDevice = () => {
             const firstItem = response.data[0];
             if (firstItem.ok && firstItem.data) {
               const freshData = { ...firstItem.data, oldGenerated: false };
-              setTimeout(() => {
+              setTimeout(async () => {
                 setFavouriteResult(freshData);
                 setSingleReportMeta({
                   provider: firstItem.data.bundledServiceName,
                   serviceId: firstItem.data.bundledServiceId,
                 });
                 setIsScanning(false);
+                if (!isAuthenticated) {
+                  await incrementGuestUsageCount();
+                }
                 onComplete?.();
               }, 4500);
             } else {
@@ -299,13 +330,16 @@ export const useScanDevice = () => {
                 imei: firstItem.imei || firstItem.data.imei || imeiInput,
                 oldGenerated: false,
               };
-              setTimeout(() => {
+              setTimeout(async () => {
                 setScanResult(freshData);
                 setSingleReportMeta({
                   provider: firstItem.provider,
                   serviceId: firstItem.serviceId || serviceId,
                 });
                 setIsScanning(false);
+                if (!isAuthenticated) {
+                  await incrementGuestUsageCount();
+                }
                 onComplete?.();
               }, 4500);
             } else {
@@ -331,7 +365,7 @@ export const useScanDevice = () => {
         setIsScanning(false);
       }
     },
-    [isFavouriteService],
+    [isFavouriteService, isAuthenticated],
   );
 
   const clearResults = () => {
@@ -360,5 +394,7 @@ export const useScanDevice = () => {
     handleRegenerateScan,
     clearResults,
     parseIMEIInput,
+    showGuestLimitModal,
+    setShowGuestLimitModal,
   };
 };

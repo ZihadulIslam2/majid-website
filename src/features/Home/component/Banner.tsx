@@ -25,6 +25,7 @@ import {
   ServiceCategory,
 } from "@/features/shopkeeper/scanDevice/types/scanDevice.types";
 import { ScannerModal } from "@/components/shared/website/ScannerModal";
+import { GuestLoginModal } from "@/components/shared/website/GuestLoginModal";
 
 export default function Banner() {
   const [imei, setImei] = useState("");
@@ -50,20 +51,38 @@ export default function Banner() {
           setServiceCategories(response.data);
           const allServices = response.data.flatMap((cat) => cat.services);
           setServices(allServices);
+
+          // Auto-select first free service for guest users
+          if (status !== "authenticated") {
+            const firstFree = allServices.find((svc) => svc.isFree);
+            if (firstFree) {
+              setSelectedService(firstFree);
+            }
+          }
         }
       } catch (err) {
         console.error("Failed to fetch services:", err);
       }
     };
     fetchServices();
-  }, []);
+  }, [status]);
 
   // Reorder categories: put "fevourite" first, then sort others alphabetically
   const orderedCategories = useMemo(() => {
-    const favouriteCategory = serviceCategories.find(
+    let categories = serviceCategories;
+    if (status !== "authenticated") {
+      categories = serviceCategories
+        .map((cat) => ({
+          ...cat,
+          services: cat.services.filter((svc) => svc.isFree),
+        }))
+        .filter((cat) => cat.services.length > 0);
+    }
+
+    const favouriteCategory = categories.find(
       (cat) => cat.category.toLowerCase() === "fevourite",
     );
-    const otherCategories = serviceCategories.filter(
+    const otherCategories = categories.filter(
       (cat) => cat.category.toLowerCase() !== "fevourite",
     );
 
@@ -74,7 +93,7 @@ export default function Banner() {
     return favouriteCategory
       ? [favouriteCategory, ...sortedOtherCategories]
       : sortedOtherCategories;
-  }, [serviceCategories]);
+  }, [serviceCategories, status]);
 
   // Filter categories and services based on search term
   const filteredCategories = orderedCategories
@@ -93,12 +112,22 @@ export default function Banner() {
   const handleSearch = () => {
     if (!imei) return;
 
+    // Authenticated users get full access
     if (status === "authenticated") {
       const serviceId = selectedService?.serviceId || 6;
       router.push(
         `/shopkeeper/scan-device?imei=${encodeURIComponent(imei)}&serviceId=${serviceId}`,
       );
+      return;
+    }
+
+    // Guest users: only allow free services
+    if (selectedService?.isFree) {
+      router.push(
+        `/shopkeeper/scan-device?imei=${encodeURIComponent(imei)}&serviceId=${selectedService.serviceId}`,
+      );
     } else {
+      // No service selected or selected a paid one
       setShowLoginModal(true);
     }
   };
@@ -473,84 +502,34 @@ export default function Banner() {
             onClick={handleSearch}
             className="h-12 w-full max-w-[240px] sm:w-auto cursor-pointer rounded-full bg-primary/80 px-8 text-base font-extrabold leading-none text-primary-foreground shadow-md transition-all hover:bg-primary active:scale-95"
           >
-            {selectedService?.price === "FREE" || !selectedService
-              ? "Free Checks"
-              : "Enter"}
+            {status !== "authenticated"
+              ? "Free Check"
+              : selectedService
+                ? "Enter"
+                : "Free Checks"}
           </button>
         </motion.div>
+
+        {/* Guest info badge */}
+        {status !== "authenticated" && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1 }}
+            className="mt-4 flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/20 backdrop-blur-sm"
+          >
+            <span className="text-[11px] font-bold text-white/80">
+              ✅ 2 free reports available — no account needed
+            </span>
+          </motion.div>
+        )}
       </div>
 
       {/* Login Modal */}
-      <AnimatePresence>
-        {showLoginModal && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowLoginModal(false)}
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-md bg-card rounded-[24px] md:rounded-[32px] p-6 md:p-8 shadow-2xl overflow-hidden border border-border mx-2"
-            >
-              <div className="absolute top-0 right-0 p-4">
-                <button
-                  onClick={() => setShowLoginModal(false)}
-                  className="p-2 hover:bg-muted rounded-full transition text-muted-foreground hover:text-foreground"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-
-              <div className="flex flex-col items-center text-center space-y-5 md:space-y-6 pt-4">
-                <div className="w-16 h-16 md:w-20 md:h-20 bg-primary/10 rounded-2xl md:rounded-3xl flex items-center justify-center text-primary">
-                  <LogIn
-                    size={32}
-                    className="md:w-[40px] md:h-[40px]"
-                    strokeWidth={2.5}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <h3 className="text-xl md:text-2xl font-black text-foreground tracking-tight">
-                    Login Required
-                  </h3>
-                  <p className="text-sm md:text-base text-muted-foreground font-medium leading-relaxed px-2">
-                    To check device IMEI details and access advanced reports,
-                    please login to your account first.
-                  </p>
-                </div>
-
-                <div className="w-full flex flex-col gap-3">
-                  <button
-                    onClick={() => router.push("/auth/login")}
-                    className="w-full py-3.5 bg-foreground text-background font-black rounded-xl md:rounded-2xl hover:opacity-90 transition shadow-xl active:scale-95 flex items-center justify-center gap-2 uppercase tracking-widest text-xs md:text-sm cursor-pointer"
-                  >
-                    Go to Login
-                  </button>
-                  <button
-                    onClick={() => setShowLoginModal(false)}
-                    className="w-full py-3.5 bg-muted text-muted-foreground font-black rounded-xl md:rounded-2xl hover:bg-muted/80 transition active:scale-95 text-xs md:text-sm uppercase tracking-widest cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                </div>
-
-                <div className="flex items-center gap-2 text-[10px] md:text-[11px] font-bold text-brand-blue bg-brand-blue/10 px-4 py-2 rounded-full">
-                  <Info size={14} className="shrink-0" />
-                  <span className="truncate">
-                    Only registered shopkeepers can verify devices.
-                  </span>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      <GuestLoginModal
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+      />
 
       <ScannerModal
         isOpen={isScannerOpen}

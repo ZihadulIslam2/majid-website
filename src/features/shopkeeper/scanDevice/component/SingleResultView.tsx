@@ -37,6 +37,7 @@ import {
 import { InvoiceModal, InvoiceFormData } from "./InvoiceModal";
 import { useCertificateDownload } from "../hooks/useCertificateDownload";
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import { SmartInvoicePDF } from "./SmartInvoicePDF";
 import { checkIMEIApi } from "../../scanDevice/api/scanDevice.api";
 import axiosInstance from "@/lib/instance/axios-instance";
@@ -103,9 +104,14 @@ export const SingleResultView = ({
   onRegenerate,
   isDownloading: parentIsDownloading,
 }: SingleResultViewProps) => {
+  const { status } = useSession();
+  const isGuest = status === "unauthenticated";
   const checksArray = getChecksArray(scanResult);
   const technicalItems = getTechnicalBreakdownItems(scanResult);
-  const riskScore = scanResult.riskMeter?.score || 0;
+  const riskScore =
+    typeof scanResult.riskMeter === "number"
+      ? scanResult.riskMeter
+      : scanResult.riskMeter?.score || 0;
   const riskInfo = getRiskLabel(riskScore);
   const { downloadCertificatePdf, isDownloading: hookIsDownloading } =
     useCertificateDownload();
@@ -593,34 +599,36 @@ SIM-Lock Status: ${isSimUnlocked ? "UNLOCKED" : "LOCKED"}
           <Copy size={22} />
         </button>
 
-        <div className="mt-6 space-y-2">
-          <button
-            onClick={() => setIsInvoiceModalOpen(true)}
-            disabled={isInvoiceDownloading || isInvoiceGenerating}
-            className="w-full py-2.5 rounded-xl border-2 border-[#84CC16] text-[#84CC16] font-bold text-sm transition flex items-center justify-center gap-2"
-          >
-            {isInvoiceGenerating ? (
-              <Loader2 size={14} className="animate-spin" />
-            ) : (
-              <Receipt size={14} />
-            )}
-            Create Smart Invoice
-          </button>
-          <button
-            onClick={handleDownloadCertificate}
-            disabled={isCertificateDownloading}
-            className="w-full py-2.5 rounded-xl bg-[#84CC16] text-white font-bold text-sm shadow-lg transition flex items-center justify-center gap-2"
-          >
-            {isCertificateDownloading ? (
-              <Loader2 size={14} className="animate-spin" />
-            ) : (
-              <Download size={14} />
-            )}
-            {isCertificateDownloading
-              ? "Generating..."
-              : "Download PDF Certificate"}
-          </button>
-        </div>
+        {!isGuest && (
+          <div className="mt-6 space-y-2">
+            <button
+              onClick={() => setIsInvoiceModalOpen(true)}
+              disabled={isInvoiceDownloading || isInvoiceGenerating}
+              className="w-full py-2.5 rounded-xl border-2 border-[#84CC16] text-[#84CC16] font-bold text-sm transition flex items-center justify-center gap-2"
+            >
+              {isInvoiceGenerating ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <Receipt size={14} />
+              )}
+              Create Smart Invoice
+            </button>
+            <button
+              onClick={handleDownloadCertificate}
+              disabled={isCertificateDownloading}
+              className="w-full py-2.5 rounded-xl bg-[#84CC16] text-white font-bold text-sm shadow-lg transition flex items-center justify-center gap-2"
+            >
+              {isCertificateDownloading ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <Download size={14} />
+              )}
+              {isCertificateDownloading
+                ? "Generating..."
+                : "Download PDF Certificate"}
+            </button>
+          </div>
+        )}
 
         {copied && (
           <div className="absolute top-3 right-3 bg-slate-800 text-white text-[10px] px-2 py-1 rounded-full animate-pulse">
@@ -744,44 +752,46 @@ SIM-Lock Status: ${isSimUnlocked ? "UNLOCKED" : "LOCKED"}
           />
         </div>
 
-        {/* Report Actions */}
-        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm h-fit">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-6">
-            Report Actions
-          </span>
-          <div className="space-y-3">
-            <button
-              onClick={() => setIsInvoiceModalOpen(true)}
-              disabled={
-                isInvoiceDownloading ||
-                isInvoiceGenerating ||
-                parentIsDownloading
-              }
-              className="w-full py-3 rounded-xl border-2 border-[#84CC16] text-[#84CC16] font-bold text-sm hover:bg-lime-50 transition flex items-center justify-center gap-2 disabled:opacity-50"
-            >
-              {isInvoiceGenerating ? (
-                <Loader2 size={16} className="animate-spin" />
-              ) : (
-                <Receipt size={16} />
-              )}
-              Create Smart Invoice
-            </button>
-            <button
-              onClick={handleDownloadCertificate}
-              disabled={isCertificateDownloading || parentIsDownloading}
-              className="w-full py-3 rounded-xl bg-[#84CC16] text-white font-bold text-sm hover:bg-[#76b813] transition shadow-lg shadow-lime-500/20 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-wait"
-            >
-              {isCertificateDownloading ? (
-                <Loader2 size={18} className="animate-spin" />
-              ) : (
-                <Download size={18} />
-              )}
-              {isCertificateDownloading
-                ? "Generating Certificate..."
-                : "Download PDF Certificate"}
-            </button>
+        {/* Report Actions — only for authenticated users */}
+        {!isGuest && (
+          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm h-fit">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-6">
+              Report Actions
+            </span>
+            <div className="space-y-3">
+              <button
+                onClick={() => setIsInvoiceModalOpen(true)}
+                disabled={
+                  isInvoiceDownloading ||
+                  isInvoiceGenerating ||
+                  parentIsDownloading
+                }
+                className="w-full py-3 rounded-xl border-2 border-[#84CC16] text-[#84CC16] font-bold text-sm hover:bg-lime-50 transition flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {isInvoiceGenerating ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <Receipt size={16} />
+                )}
+                Create Smart Invoice
+              </button>
+              <button
+                onClick={handleDownloadCertificate}
+                disabled={isCertificateDownloading || parentIsDownloading}
+                className="w-full py-3 rounded-xl bg-[#84CC16] text-white font-bold text-sm hover:bg-[#76b813] transition shadow-lg shadow-lime-500/20 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-wait"
+              >
+                {isCertificateDownloading ? (
+                  <Loader2 size={18} className="animate-spin" />
+                ) : (
+                  <Download size={18} />
+                )}
+                {isCertificateDownloading
+                  ? "Generating Certificate..."
+                  : "Download PDF Certificate"}
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Technical Breakdown */}
         {technicalItems.length > 0 && (

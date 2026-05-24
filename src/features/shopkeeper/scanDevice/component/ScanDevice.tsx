@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ScannerModal } from "@/components/shared/website/ScannerModal";
 import { BulkImeiUploadModal } from "@/components/shared/website/BulkImeiUploadModal";
+import { GuestLoginModal } from "@/components/shared/website/GuestLoginModal";
 import { useServices } from "../hooks/useServices";
 import { useScanDevice } from "../hooks/useScanDevice";
 import { useCertificateDownload } from "../hooks/useCertificateDownload";
@@ -47,6 +48,8 @@ export default function ScanDevice() {
     handleScan,
     handleRegenerateScan,
     clearResults,
+    showGuestLimitModal,
+    setShowGuestLimitModal,
   } = useScanDevice();
 
   const { isDownloading, downloadCertificatePdf } = useCertificateDownload();
@@ -251,6 +254,14 @@ export default function ScanDevice() {
           clearResults();
           setBatchResult(result);
         }}
+      />
+
+      <GuestLoginModal
+        isOpen={showGuestLimitModal}
+        onClose={() => setShowGuestLimitModal(false)}
+        title="Report Limit Reached"
+        message="You have reached the limit of 2 free report generations per device. Please log in or create an account to get unlimited access."
+        badge="Create a free account to continue checking IMEI details."
       />
     </div>
   );

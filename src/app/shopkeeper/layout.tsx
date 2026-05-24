@@ -1,9 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
+import { usePathname, useRouter } from "next/navigation";
 import Header from "@/components/shared/shopkeeper/Header";
 import Sidebar from "@/components/shared/shopkeeper/Sidebar";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
+
+const GUEST_ALLOWED_PATH = "/shopkeeper/scan-device";
 
 export default function ShopkeeperLayout({
   children,
@@ -11,20 +15,47 @@ export default function ShopkeeperLayout({
   children: React.ReactNode;
 }) {
   const [openSidebar, setOpenSidebar] = useState(false);
+  const { status } = useSession();
+  const pathname = usePathname();
+  const router = useRouter();
+
+  const isGuestAllowedPage = pathname === GUEST_ALLOWED_PATH;
+  const isAuthenticated = status === "authenticated";
+
+  // Redirect unauthenticated users away from protected pages only
+  useEffect(() => {
+    if (status === "unauthenticated" && !isGuestAllowedPage) {
+      router.push("/auth/login");
+    }
+  }, [status, isGuestAllowedPage, router]);
+
+  // Show loading spinner ONLY for protected pages while session loads
+  // Guest-allowed pages render immediately so scan can start right away
+  if (status === "loading" && !isGuestAllowedPage) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="w-10 h-10 border-4 border-[#84CC16] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-[#F8FAFC]">
-      {/* Desktop Sidebar */}
-      <div className="hidden lg:block">
-        <Sidebar />
-      </div>
-
-      {/* Mobile Sidebar */}
-      <Sheet open={openSidebar} onOpenChange={setOpenSidebar}>
-        <SheetContent side="left" className="p-0 w-[300px] border-r-0">
+      {/* Desktop Sidebar — authenticated only */}
+      {isAuthenticated && (
+        <div className="hidden lg:block">
           <Sidebar />
-        </SheetContent>
-      </Sheet>
+        </div>
+      )}
+
+      {/* Mobile Sidebar — authenticated only */}
+      {isAuthenticated && (
+        <Sheet open={openSidebar} onOpenChange={setOpenSidebar}>
+          <SheetContent side="left" className="p-0 w-[300px] border-r-0">
+            <Sidebar />
+          </SheetContent>
+        </Sheet>
+      )}
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
