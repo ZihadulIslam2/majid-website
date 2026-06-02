@@ -90,8 +90,215 @@ import {
   useCreateCustomer,
   useCustomersByShopkeeper,
   useCreateInvoice,
+  useImportCsvInventory,
 } from "../../hooks/useInventory";
 import { ScanResultModal } from "./ScanResultModal";
+
+// ─── Import CSV sub-component (used as the 3rd tab inside the modal) ──────────
+function ImportCsvModalContent({ onClose }: { onClose: () => void }) {
+  const { data: session } = useSession();
+  const userId = (session?.user as { id?: string })?.id ?? "";
+  const { mutateAsync: importCsv, isPending } = useImportCsvInventory();
+
+  const [file, setFile] = useState<File | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<
+    "idle" | "success" | "error"
+  >("idle");
+  const [errorMsg, setErrorMsg] = useState("");
+  const csvInputRef = useRef<HTMLInputElement>(null);
+
+  const ACCEPTED_EXTS = [".csv", ".xls", ".xlsx"];
+  const ACCEPTED_MIME = [
+    "text/csv",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  ];
+
+  const pickFile = (f: File) => {
+    const valid =
+      ACCEPTED_MIME.includes(f.type) ||
+      ACCEPTED_EXTS.some((ext) => f.name.toLowerCase().endsWith(ext));
+    if (!valid) {
+      toast.error("Only CSV, XLS, or XLSX files are accepted.");
+      return;
+    }
+    setFile(f);
+    setUploadStatus("idle");
+    setErrorMsg("");
+  };
+
+  const onCsvFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const picked = e.target.files?.[0];
+    if (picked) pickFile(picked);
+    e.target.value = "";
+  };
+
+  const handleCsvSubmit = async () => {
+    if (!file) {
+      toast.error("Please select a file first.");
+      return;
+    }
+    if (!userId) {
+      toast.error("Session not found. Please log in again.");
+      return;
+    }
+    try {
+      setUploadStatus("idle");
+      await importCsv({ file, userId });
+      setUploadStatus("success");
+      setFile(null);
+      toast.success("Inventory imported successfully!");
+      setTimeout(() => onClose(), 1200);
+    } catch (err) {
+      const e = err as { response?: { data?: { message?: string } } };
+      const msg =
+        e.response?.data?.message ?? "Import failed. Please try again.";
+      setErrorMsg(msg);
+      setUploadStatus("error");
+      toast.error(msg);
+    }
+  };
+
+  const fileSize = file
+    ? file.size < 1024 * 1024
+      ? `${(file.size / 1024).toFixed(1)} KB`
+      : `${(file.size / (1024 * 1024)).toFixed(1)} MB`
+    : "";
+
+  return (
+    <div className="flex flex-col gap-6 py-4">
+      {/* Drop zone */}
+      <div
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragOver(true);
+        }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragOver(false);
+          const dropped = e.dataTransfer.files[0];
+          if (dropped) pickFile(dropped);
+        }}
+        onClick={() => !file && csvInputRef.current?.click()}
+        className={`flex flex-col items-center justify-center gap-4 rounded-[28px] border-2 border-dashed p-10 cursor-pointer transition-all min-h-[220px]
+          ${
+            dragOver
+              ? "border-[#84CC16] bg-[#84CC16]/6"
+              : file
+                ? "border-[#84CC16] bg-[#84CC16]/4"
+                : "border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30"
+          }`}
+      >
+        <input
+          ref={csvInputRef}
+          type="file"
+          accept=".csv,.xls,.xlsx"
+          className="hidden"
+          onChange={onCsvFileChange}
+        />
+
+        {!file ? (
+          <div className="flex flex-col items-center gap-3 text-center">
+            <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#84CC16]/10 text-[#84CC16]">
+              <Upload className="w-7 h-7" strokeWidth={2.2} />
+            </span>
+            <div>
+              <p className="text-sm font-black text-slate-900 dark:text-white">
+                Drag & drop your file here
+              </p>
+              <p className="text-xs font-bold text-slate-400 mt-1">
+                or{" "}
+                <span className="text-[#84CC16] underline underline-offset-2">
+                  browse
+                </span>{" "}
+                to choose
+              </p>
+            </div>
+            <p className="text-[10px] font-bold text-slate-300 dark:text-slate-600 uppercase tracking-widest">
+              Supports .CSV · .XLS · .XLSX
+            </p>
+          </div>
+        ) : (
+          <div
+            className="flex flex-col items-center gap-3"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#84CC16]/15 text-[#84CC16]">
+              <FileText className="w-7 h-7" strokeWidth={2} />
+            </span>
+            <div className="text-center">
+              <p className="text-sm font-black text-slate-900 dark:text-white break-all max-w-xs">
+                {file.name}
+              </p>
+              <p className="text-xs font-bold text-slate-400 mt-0.5">
+                {fileSize}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setFile(null);
+                setUploadStatus("idle");
+                setErrorMsg("");
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+              Remove file
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Status banners */}
+      {uploadStatus === "success" && (
+        <div className="flex items-center gap-3 px-5 py-4 rounded-2xl bg-green-50 border border-green-100 dark:bg-green-900/20 dark:border-green-800">
+          <CheckCircle2 className="text-green-500 flex-shrink-0 w-5 h-5" />
+          <p className="text-sm font-bold text-green-700 dark:text-green-400">
+            Import successful! Your inventory has been updated.
+          </p>
+        </div>
+      )}
+      {uploadStatus === "error" && errorMsg && (
+        <div className="flex items-center gap-3 px-5 py-4 rounded-2xl bg-red-50 border border-red-100 dark:bg-red-900/20 dark:border-red-800">
+          <AlertTriangle className="text-red-500 flex-shrink-0 w-5 h-5" />
+          <p className="text-sm font-bold text-red-600 dark:text-red-400">
+            {errorMsg}
+          </p>
+        </div>
+      )}
+
+      {/* Submit button */}
+      <Button
+        type="button"
+        onClick={handleCsvSubmit}
+        disabled={!file || isPending}
+        className="w-full h-14 rounded-2xl bg-[#84CC16] hover:bg-[#76b813] text-white font-black text-sm uppercase tracking-widest shadow-lg shadow-lime-500/25 transition active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {isPending ? (
+          <>
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            Importing...
+          </>
+        ) : (
+          <>
+            <Upload className="w-4 h-4 mr-2" strokeWidth={2.5} />
+            Submit &amp; Import
+          </>
+        )}
+      </Button>
+
+      <p className="mx-auto max-w-[800px] text-center text-[10px] font-bold uppercase tracking-widest text-slate-300 dark:text-slate-600">
+        Upload a CSV file with inventory rows. The file should use the same
+        columns as the template endpoint. Each row is imported individually and
+        the response includes per-row success or failure results.
+      </p>
+    </div>
+  );
+}
+// ──────────────────────────────────────────────────────────────────────────────
 
 interface InventoryFormModalProps {
   isOpen: boolean;
@@ -2093,7 +2300,7 @@ export function InventoryFormModal({
                 onValueChange={setActiveTab}
                 className="w-full"
               >
-                <TabsList className="grid w-full grid-cols-2 mb-8 bg-slate-100/50 dark:bg-slate-900/50 p-1 rounded-2xl h-14">
+                <TabsList className="grid w-full grid-cols-3 mb-8 bg-slate-100/50 dark:bg-slate-900/50 p-1 rounded-2xl h-14">
                   <TabsTrigger
                     value="manual"
                     className="rounded-xl font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-[#84CC16] data-[state=active]:shadow-sm transition-all"
@@ -2105,6 +2312,12 @@ export function InventoryFormModal({
                     className="rounded-xl font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-[#84CC16] data-[state=active]:shadow-sm transition-all"
                   >
                     Bulk Upload
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="import-csv"
+                    className="rounded-xl font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-[#84CC16] data-[state=active]:shadow-sm transition-all"
+                  >
+                    Import CSV
                   </TabsTrigger>
                 </TabsList>
 
@@ -2396,6 +2609,13 @@ export function InventoryFormModal({
                     </div>
                   </TabsContent>
                 )}
+
+                <TabsContent
+                  value="import-csv"
+                  className="mt-0 border-none p-0 outline-none focus-visible:ring-0"
+                >
+                  <ImportCsvModalContent onClose={onClose} />
+                </TabsContent>
               </Tabs>
             ) : (
               renderFormContent()

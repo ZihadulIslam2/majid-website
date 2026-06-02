@@ -205,3 +205,17 @@ export const deleteAllShopkeeperCartItems = async (shopkeeperId: string) => {
   );
   return response.data;
 };
+
+export const importCsvInventory = async (input: {
+  file: File;
+  userId: string;
+}) => {
+  const formData = new FormData();
+  formData.append("file", input.file);
+  formData.append("userId", input.userId);
+
+  const response = await api.post(`${BASE}/import-csv`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return response.data;
+};

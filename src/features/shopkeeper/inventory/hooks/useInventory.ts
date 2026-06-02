@@ -13,6 +13,7 @@ import {
   getShopkeeperCart,
   deleteCartItem,
   deleteAllShopkeeperCartItems,
+  importCsvInventory,
 } from "../api/inventory.api";
 import type {
   CreateInventoryInput,
@@ -173,6 +174,17 @@ export function useDeleteAllShopkeeperCartItems(shopkeeperId?: string) {
       queryClient.invalidateQueries({
         queryKey: INVENTORY_KEYS.shopkeeperCart(shopkeeperId || ""),
       });
+    },
+  });
+}
+
+export function useImportCsvInventory() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { file: File; userId: string }) =>
+      importCsvInventory(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: INVENTORY_KEYS.all });
     },
   });
 }

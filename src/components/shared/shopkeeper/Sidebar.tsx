@@ -16,6 +16,7 @@ import {
   Wrench,
   Bell,
   FileText,
+  SearchCheckIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -35,6 +36,11 @@ const navItems = [
     label: "Scan Device",
     href: "/shopkeeper/scan-device",
     isSpecial: true,
+  },
+  {
+    icon: <SearchCheckIcon size={20} />,
+    label: "Search History",
+    href: "/shopkeeper/search-history",
   },
   {
     icon: <LayoutDashboard size={20} />,
