@@ -70,6 +70,7 @@ export interface ShopkeeperNotePayload {
 }
 
 export interface RepairRequest {
+  technicianFeedback?: string;
   _id: string;
   shopkeeperId:
     | string
