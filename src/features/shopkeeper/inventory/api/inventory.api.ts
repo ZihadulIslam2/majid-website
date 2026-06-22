@@ -9,6 +9,7 @@ import type {
   CategoryInput,
   CategoryListResponse,
   CategorySingleResponse,
+  CustomersResponse,
 } from "../types";
 
 const BASE = "/inventory";
@@ -235,6 +236,7 @@ export const createCustomer = async (input: {
   phone: string;
   address: string;
   shopkeeperId: string;
+  addedBy?: string;
   salesMethod?: string;
   actualSalePrice?: number;
 }) => {
@@ -242,7 +244,25 @@ export const createCustomer = async (input: {
   return response.data;
 };
 
-export const getCustomersByShopkeeper = async (shopkeeperId: string) => {
+export const updateCustomer = async ({
+  id,
+  input,
+}: {
+  id: string;
+  input: Record<string, unknown>;
+}) => {
+  const response = await api.put(`/customer/update/${id}`, input);
+  return response.data;
+};
+
+export const deleteCustomer = async (id: string) => {
+  const response = await api.delete(`/customer/delete/${id}`);
+  return response.data;
+};
+
+export const getCustomersByShopkeeper = async (
+  shopkeeperId: string,
+): Promise<CustomersResponse> => {
   const response = await api.get(`/customer/shopkeeper/${shopkeeperId}`);
   return response.data;
 };

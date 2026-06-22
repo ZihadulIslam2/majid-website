@@ -15,6 +15,7 @@ import {
   Wrench,
   FileText,
   SearchCheckIcon,
+  User,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -82,7 +83,11 @@ const navItems = [
     label: "Inventory",
     href: "/shopkeeper/inventory",
   },
-
+  {
+    icon: <User size={20} />,
+    label: "Customer",
+    href: "/shopkeeper/customer",
+  },
   {
     icon: <Wrench size={20} />,
     label: "Repair Requests",

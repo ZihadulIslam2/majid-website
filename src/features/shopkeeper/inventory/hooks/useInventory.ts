@@ -14,6 +14,8 @@ import {
   createInvoice,
   getMyInvoiceHistory,
   createCustomer,
+  updateCustomer,
+  deleteCustomer,
   getCustomersByShopkeeper,
   getShopkeeperCart,
   deleteCartItem,
@@ -28,6 +30,7 @@ import type {
   CartListResponse,
   CategoryInput,
   CategoryListResponse,
+  CustomersResponse,
 } from "../types";
 
 export const INVENTORY_KEYS = {
@@ -183,6 +186,7 @@ export function useMyInvoiceHistory(id: string) {
 }
 
 export function useCreateCustomer() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: {
       firstName: string;
@@ -191,14 +195,53 @@ export function useCreateCustomer() {
       phone: string;
       address: string;
       shopkeeperId: string;
+      addedBy?: string;
       salesMethod?: string;
       actualSalePrice?: number;
     }) => createCustomer(input),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["customers", variables.shopkeeperId],
+      });
+    },
+  });
+}
+
+export function useUpdateCustomer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      input,
+      shopkeeperId,
+    }: {
+      id: string;
+      input: Record<string, unknown>;
+      shopkeeperId: string;
+    }) => updateCustomer({ id, input }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["customers", variables.shopkeeperId],
+      });
+    },
+  });
+}
+
+export function useDeleteCustomer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, shopkeeperId }: { id: string; shopkeeperId: string }) =>
+      deleteCustomer(id),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["customers", variables.shopkeeperId],
+      });
+    },
   });
 }
 
 export function useCustomersByShopkeeper(shopkeeperId: string) {
-  return useQuery({
+  return useQuery<CustomersResponse>({
     queryKey: ["customers", shopkeeperId],
     queryFn: () => getCustomersByShopkeeper(shopkeeperId),
     enabled: !!shopkeeperId,
