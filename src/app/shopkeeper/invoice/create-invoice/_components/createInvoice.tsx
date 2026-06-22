@@ -276,6 +276,8 @@ export const InvoicePDF = ({
   paymentType,
   card,
   InvoiceName,
+  customerInfoLabel,
+  shopkeeperInfoLabel,
 }: any) => (
   <Document>
     <Page size="A4" style={pdfStyles.page}>
@@ -315,7 +317,9 @@ export const InvoicePDF = ({
       <View style={pdfStyles.infoContainer}>
         {/* Customer Card */}
         <View style={pdfStyles.infoBox}>
-          <Text style={pdfStyles.infoLabel}>Client Details</Text>
+          <Text style={pdfStyles.infoLabel}>
+            {customerInfoLabel || "Client Details"}
+          </Text>
           <Text style={pdfStyles.customerName}>
             {`${customer?.firstName || "Valued"} ${customer?.lastName || "Customer"}`}
           </Text>
@@ -338,14 +342,16 @@ export const InvoicePDF = ({
           </Text>
 
           <Text style={pdfStyles.paymentMethod}>
-            {paymentType ? paymentType.toUpperCase() : "N/A"}
+            PAYMENT METHOD: {paymentType ? paymentType.toUpperCase() : "N/A"}
             {paymentType === "card" && card ? ` •••• ${card}` : ""}
           </Text>
         </View>
 
         {/* Store Card */}
         <View style={pdfStyles.infoBox}>
-          <Text style={pdfStyles.infoLabelBlue}>Store Information</Text>
+          <Text style={pdfStyles.infoLabelBlue}>
+            {shopkeeperInfoLabel || "Store Information"}
+          </Text>
           <Text style={pdfStyles.customerName}>
             {shopkeeper?.shopName || "Gadget Galaxy"}
           </Text>

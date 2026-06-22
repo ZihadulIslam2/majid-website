@@ -286,7 +286,7 @@ export default function DeliveryInvoice() {
   const customers = getInvoiceUser?.data?.data || [];
 
   // Custom Dynamic Input Payment states
-  const [paymentType, setPaymentType] = useState("cash");
+  const [paymentType, setPaymentType] = useState("cash on delivery");
   const [alreadyPaid, setAlreadyPaid] = useState<number>(0);
 
   const toggleDevice = (id: string) => {
@@ -371,6 +371,9 @@ export default function DeliveryInvoice() {
           alreadyPaid={alreadyPaid}
           dueAmount={dueAmount}
           paymentType={paymentType}
+          InvoiceName="DELIVERY INVOICE"
+          customerInfoLabel="Deliver To"
+          shopkeeperInfoLabel="Deliver From"
         />
       );
 
@@ -432,9 +435,7 @@ export default function DeliveryInvoice() {
                 <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center text-orange-600">
                   <User size={20} />
                 </div>
-                <p className="text-xl font-black text-foreground">
-                  Customer Information
-                </p>
+                <p className="text-xl font-black text-foreground">Deliver To</p>
               </div>
 
               <div className="space-y-3 mb-6">
@@ -458,12 +459,17 @@ export default function DeliveryInvoice() {
                         email: selectedCustomer.email || "",
                         phone: selectedCustomer.phone || "",
                         address: selectedCustomer.address || "",
-                        paymentType: selectedCustomer.paymentType || "cash",
+                        paymentType:
+                          selectedCustomer.paymentType || "cash on delivery",
                         alreadyPaid: selectedCustomer.alreadyPaid || 0,
                         customerId: selectedCustomer.customerId || "",
                       });
 
-                      setPaymentType(selectedCustomer.paymentType || "cash");
+                      setPaymentType(
+                        selectedCustomer.paymentType === "cash"
+                          ? "cash on delivery"
+                          : selectedCustomer.paymentType || "cash on delivery",
+                      );
                       setAlreadyPaid(selectedCustomer.alreadyPaid || 0);
                     }
                   }}
@@ -597,7 +603,7 @@ export default function DeliveryInvoice() {
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-black text-muted-foreground uppercase tracking-widest">
-                  Billing Address
+                  Delivery Address
                 </label>
                 <Input
                   value={customer.address}
@@ -612,15 +618,16 @@ export default function DeliveryInvoice() {
               {/* Payment Select UI Field Implementation */}
               <div className="space-y-2">
                 <label className="text-xs font-black text-muted-foreground uppercase tracking-widest">
-                  Payment Type
+                  Payment Method
                 </label>
                 <select
                   value={paymentType}
                   onChange={(e) => setPaymentType(e.target.value)}
                   className="flex w-full rounded-2xl h-12 border border-primary bg-background px-3 py-2 text-sm font-bold shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  <option value="cash">Cash</option>
+                  <option value="cash on delivery">Cash on Delivery</option>
                   <option value="card">Card</option>
+                  <option value="bank transfer">Bank Transfer</option>
                 </select>
               </div>
 
@@ -718,7 +725,7 @@ export default function DeliveryInvoice() {
             <div className="mt-8 space-y-3">
               <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">
-                  Store Address
+                  Deliver From
                 </p>
                 <p className="text-sm font-bold">
                   {profileData?.data?.shopAddress || "N/A"}

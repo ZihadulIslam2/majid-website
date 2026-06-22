@@ -34,6 +34,7 @@ interface CartItem {
   image: string;
   priceEditable?: boolean;
   type?: "inventory" | "repair";
+  customer?: CustomerInformation;
 }
 
 interface RepairOption {
@@ -42,6 +43,16 @@ interface RepairOption {
   subtitle?: string;
   price: number;
   image: string;
+  customer: CustomerInformation;
+}
+
+interface CustomerInformation {
+  name?: string;
+  email?: string;
+  phone?: string;
+  deviceModel?: string;
+  imeiNumber?: string;
+  repairDescription?: string;
 }
 
 interface ShopkeeperProfile {
@@ -55,6 +66,19 @@ interface CheckoutModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
+
+const DEFAULT_ITEM_IMAGE = "/no-image.jpg";
+
+const getItemImage = (url?: string) => url?.trim() || DEFAULT_ITEM_IMAGE;
+
+const useDefaultImageOnError = (
+  event: React.SyntheticEvent<HTMLImageElement>,
+) => {
+  if (!event.currentTarget.src.endsWith(DEFAULT_ITEM_IMAGE)) {
+    event.currentTarget.srcset = "";
+    event.currentTarget.src = DEFAULT_ITEM_IMAGE;
+  }
+};
 
 const invoicePdfStyles = StyleSheet.create({
   page: {
@@ -113,6 +137,26 @@ const invoicePdfStyles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 0.8,
     marginBottom: 10,
+  },
+  customerGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+  },
+  customerField: {
+    width: "50%",
+    marginBottom: 8,
+    paddingRight: 12,
+  },
+  customerLabel: {
+    fontSize: 7,
+    color: "#64748b",
+    textTransform: "uppercase",
+    marginBottom: 3,
+  },
+  customerValue: {
+    fontSize: 9,
+    color: "#111827",
+    fontWeight: "bold",
   },
   tableHeader: {
     flexDirection: "row",
@@ -220,105 +264,125 @@ const currency = (value: number) => `£${Number(value || 0).toFixed(2)}`;
 const CheckoutInvoicePDF = ({
   cart,
   shopkeeper,
-  subtotal,
-  depositPaid,
-  totalDue,
+  totalPrice,
 }: {
   cart: CartItem[];
   shopkeeper?: ShopkeeperProfile;
-  subtotal: number;
-  depositPaid: number;
-  totalDue: number;
-}) => (
-  <Document>
-    <Page size="A4" style={invoicePdfStyles.page}>
-      <View style={invoicePdfStyles.header}>
-        <View style={invoicePdfStyles.headerTop}>
-          <View>
-            <Text style={invoicePdfStyles.shopName}>
-              {shopkeeper?.shopName || "Majid Shop"}
-            </Text>
-            <Text style={invoicePdfStyles.mutedOnDark}>
-              {shopkeeper?.shopAddress || "Repair and inventory checkout"}
-            </Text>
-            <Text style={invoicePdfStyles.mutedOnDark}>
-              {shopkeeper?.phone || shopkeeper?.whatsappNumber || ""}
-            </Text>
-          </View>
-          <View style={invoicePdfStyles.titleBox}>
-            <Text style={invoicePdfStyles.invoiceTitle}>CHECKOUT INVOICE</Text>
-            <Text style={invoicePdfStyles.invoiceMeta}>
-              Date: {new Date().toLocaleDateString("en-GB")}
-            </Text>
-            <Text style={invoicePdfStyles.invoiceMeta}>
-              Items: {cart.length}
-            </Text>
-          </View>
-        </View>
-      </View>
+  totalPrice: number;
+}) => {
+  const customer = cart.find((item) => item.type === "repair")?.customer;
+  const customerFields: Array<[string, string | undefined]> = customer
+    ? [
+        ["Customer Name", customer.name],
+        ["Phone", customer.phone],
+        ["Email", customer.email],
+        ["Device Model", customer.deviceModel],
+        ["IMEI Number", customer.imeiNumber],
+        ["Repair Details", customer.repairDescription],
+      ]
+    : [];
 
-      <View style={invoicePdfStyles.section}>
-        <Text style={invoicePdfStyles.sectionTitle}>Checkout Items</Text>
-        <View style={invoicePdfStyles.tableHeader}>
-          <Text style={invoicePdfStyles.colItem}>Item</Text>
-          <Text style={invoicePdfStyles.colType}>Type</Text>
-          <Text style={invoicePdfStyles.colQty}>Qty</Text>
-          <Text style={invoicePdfStyles.colUnit}>Unit</Text>
-          <Text style={invoicePdfStyles.colTotal}>Total</Text>
-        </View>
-
-        {cart.map((item) => (
-          <View key={item.id} style={invoicePdfStyles.row}>
-            <View style={invoicePdfStyles.colItem}>
-              <Text style={invoicePdfStyles.itemName}>{item.name}</Text>
-              {item.subtitle && (
-                <Text style={invoicePdfStyles.itemMeta}>{item.subtitle}</Text>
-              )}
+  return (
+    <Document>
+      <Page size="A4" style={invoicePdfStyles.page}>
+        <View style={invoicePdfStyles.header}>
+          <View style={invoicePdfStyles.headerTop}>
+            <View>
+              <Text style={invoicePdfStyles.shopName}>
+                {shopkeeper?.shopName || "Majid Shop"}
+              </Text>
+              <Text style={invoicePdfStyles.mutedOnDark}>
+                {shopkeeper?.shopAddress || "Repair and inventory checkout"}
+              </Text>
+              <Text style={invoicePdfStyles.mutedOnDark}>
+                {shopkeeper?.phone || shopkeeper?.whatsappNumber || ""}
+              </Text>
             </View>
-            <Text style={[invoicePdfStyles.colType, invoicePdfStyles.badge]}>
-              {item.type === "repair" ? "Repair" : "Inventory"}
-            </Text>
-            <Text style={invoicePdfStyles.colQty}>
-              {item.type === "repair" ? "-" : item.quantity}
-            </Text>
-            <Text style={invoicePdfStyles.colUnit}>{currency(item.price)}</Text>
-            <Text style={[invoicePdfStyles.colTotal, invoicePdfStyles.amount]}>
-              {currency(item.price * item.quantity)}
-            </Text>
-          </View>
-        ))}
-      </View>
-
-      <View style={invoicePdfStyles.summaryWrap}>
-        <View style={invoicePdfStyles.summary}>
-          <View style={invoicePdfStyles.summaryRow}>
-            <Text style={invoicePdfStyles.summaryLabel}>Subtotal</Text>
-            <Text style={invoicePdfStyles.summaryValue}>
-              {currency(subtotal)}
-            </Text>
-          </View>
-          <View style={invoicePdfStyles.summaryRow}>
-            <Text style={invoicePdfStyles.summaryLabel}>Deposit Paid</Text>
-            <Text style={invoicePdfStyles.summaryValue}>
-              -{currency(depositPaid)}
-            </Text>
-          </View>
-          <View style={invoicePdfStyles.totalRow}>
-            <Text style={invoicePdfStyles.totalLabel}>Total Due</Text>
-            <Text style={invoicePdfStyles.totalValue}>
-              {currency(totalDue)}
-            </Text>
+            <View style={invoicePdfStyles.titleBox}>
+              <Text style={invoicePdfStyles.invoiceTitle}>
+                CHECKOUT INVOICE
+              </Text>
+              <Text style={invoicePdfStyles.invoiceMeta}>
+                Date: {new Date().toLocaleDateString("en-GB")}
+              </Text>
+              <Text style={invoicePdfStyles.invoiceMeta}>
+                Items: {cart.length}
+              </Text>
+            </View>
           </View>
         </View>
-      </View>
 
-      <Text style={invoicePdfStyles.footer}>
-        Thank you for your business. This invoice was generated from selected
-        repair and inventory checkout items.
-      </Text>
-    </Page>
-  </Document>
-);
+        {customer && (
+          <View style={invoicePdfStyles.section}>
+            <Text style={invoicePdfStyles.sectionTitle}>
+              Customer Information
+            </Text>
+            <View style={invoicePdfStyles.customerGrid}>
+              {customerFields
+                .filter(([, value]) => Boolean(value))
+                .map(([label, value]) => (
+                  <View key={label} style={invoicePdfStyles.customerField}>
+                    <Text style={invoicePdfStyles.customerLabel}>{label}</Text>
+                    <Text style={invoicePdfStyles.customerValue}>{value}</Text>
+                  </View>
+                ))}
+            </View>
+          </View>
+        )}
+
+        <View style={invoicePdfStyles.section}>
+          <Text style={invoicePdfStyles.sectionTitle}>Checkout Items</Text>
+          <View style={invoicePdfStyles.tableHeader}>
+            <Text style={invoicePdfStyles.colItem}>Item</Text>
+            <Text style={invoicePdfStyles.colType}>Type</Text>
+            <Text style={invoicePdfStyles.colQty}>Qty</Text>
+            <Text style={invoicePdfStyles.colUnit}>Unit</Text>
+            <Text style={invoicePdfStyles.colTotal}>Total</Text>
+          </View>
+
+          {cart.map((item) => (
+            <View key={item.id} style={invoicePdfStyles.row}>
+              <View style={invoicePdfStyles.colItem}>
+                <Text style={invoicePdfStyles.itemName}>{item.name}</Text>
+                {item.subtitle && (
+                  <Text style={invoicePdfStyles.itemMeta}>{item.subtitle}</Text>
+                )}
+              </View>
+              <Text style={[invoicePdfStyles.colType, invoicePdfStyles.badge]}>
+                {item.type === "repair" ? "Repair" : "Inventory"}
+              </Text>
+              <Text style={invoicePdfStyles.colQty}>{item.quantity}</Text>
+              <Text style={invoicePdfStyles.colUnit}>
+                {currency(item.price)}
+              </Text>
+              <Text
+                style={[invoicePdfStyles.colTotal, invoicePdfStyles.amount]}
+              >
+                {currency(item.price * item.quantity)}
+              </Text>
+            </View>
+          ))}
+        </View>
+
+        <View style={invoicePdfStyles.summaryWrap}>
+          <View style={invoicePdfStyles.summary}>
+            <View style={invoicePdfStyles.totalRow}>
+              <Text style={invoicePdfStyles.totalLabel}>Total Price</Text>
+              <Text style={invoicePdfStyles.totalValue}>
+                {currency(totalPrice)}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        <Text style={invoicePdfStyles.footer}>
+          Thank you for your business. This invoice was generated from selected
+          repair and inventory checkout items.
+        </Text>
+      </Page>
+    </Document>
+  );
+};
 
 export default function CheckoutModal({
   open,
@@ -345,7 +409,7 @@ export default function CheckoutModal({
         id: item._id,
         name: item.itemName || "Unnamed item",
         price: Number(item.expectedPrice || 0),
-        image: item.image?.url || "/placeholder.png",
+        image: getItemImage(item.image?.url),
         subtitle:
           item.imeiNumber ||
           item.currentState ||
@@ -360,10 +424,7 @@ export default function CheckoutModal({
       .filter((request) => request.status === "completed")
       .map((request) => {
         const notes = request.shopkeeperNotes || [];
-        const price = notes.reduce(
-          (sum, note) => sum + Number(note.cost || 0),
-          0,
-        );
+        const price = Number(request.price || 0);
         const firstImage = notes
           .flatMap((note) => note.images || [])
           .find((image) => image?.url)?.url;
@@ -378,7 +439,15 @@ export default function CheckoutModal({
             request.description ||
             undefined,
           price,
-          image: firstImage || "/placeholder.png",
+          image: getItemImage(firstImage),
+          customer: {
+            name: request.firstName,
+            email: request.email,
+            phone: request.phoneNumber,
+            deviceModel: request.deviceModel,
+            imeiNumber: request.IMEINumber,
+            repairDescription: request.description,
+          },
         };
       });
   }, [repairRequests]);
@@ -401,8 +470,6 @@ export default function CheckoutModal({
         .some((value) => value?.toLowerCase().includes(search));
     });
   }, [cart, completedRepairs, repairSearch]);
-
-  const depositPaid = 30.0;
 
   const updateQuantity = (id: string, amount: number) => {
     setCart((prev) =>
@@ -465,6 +532,7 @@ export default function CheckoutModal({
           image: repair.image,
           priceEditable: false,
           type: "repair",
+          customer: repair.customer,
         },
       ];
     });
@@ -476,11 +544,10 @@ export default function CheckoutModal({
     setCart((prev) => prev.filter((item) => item.id !== id));
   };
 
-  const subtotal = cart.reduce(
+  const totalPrice = cart.reduce(
     (sum, item) => sum + item.price * item.quantity,
     0,
   );
-  const totalDue = Math.max(0, subtotal - depositPaid);
 
   const handleCreateInvoice = async () => {
     if (!cart.length) {
@@ -498,9 +565,7 @@ export default function CheckoutModal({
         <CheckoutInvoicePDF
           cart={cart}
           shopkeeper={profileData?.data}
-          subtotal={subtotal}
-          depositPaid={depositPaid}
-          totalDue={totalDue}
+          totalPrice={totalPrice}
         />
       );
       const blob = await pdf(doc).toBlob();
@@ -516,7 +581,7 @@ export default function CheckoutModal({
           itemsIds: cart
             .filter((item) => item.type === "inventory")
             .map((item) => item.id),
-          dueAmount: totalDue,
+          dueAmount: totalPrice,
         },
         {
           onSuccess: () => {
@@ -582,6 +647,7 @@ export default function CheckoutModal({
                           height={96}
                           src={product.image}
                           alt={product.name}
+                          onError={useDefaultImageOnError}
                           className="object-contain max-h-full max-w-full mix-blend-multiply"
                         />
                       </div>
@@ -655,6 +721,7 @@ export default function CheckoutModal({
                               height={36}
                               src={repair.image}
                               alt={repair.name}
+                              onError={useDefaultImageOnError}
                               className="h-full w-full object-cover"
                             />
                           </div>
@@ -705,6 +772,7 @@ export default function CheckoutModal({
                             height={36}
                             src={item.image}
                             alt={item.name}
+                            onError={useDefaultImageOnError}
                             className="h-full w-full object-cover"
                           />
                         </div>
@@ -787,19 +855,12 @@ export default function CheckoutModal({
 
             {/* Calculations Section */}
             <div className=" pt-4 mt-auto space-y-3">
-              <div className="flex justify-between items-center text-sm border-t border-dashed border-gray-200 pt-2">
-                <span className="text-gray-500 font-medium">Subtotal</span>
-                <span className="text-gray-700 font-semibold">
-                  £{subtotal.toFixed(2)}
-                </span>
-              </div>
-
-              <div className="flex justify-between items-center pt-2">
+              <div className="flex justify-between items-center border-t border-dashed border-gray-200 pt-4">
                 <span className="text-base font-bold text-gray-800">
-                  Total Due
+                  Total Price
                 </span>
                 <span className="text-xl font-black text-[#0f834f]">
-                  £{totalDue.toFixed(2)}
+                  £{totalPrice.toFixed(2)}
                 </span>
               </div>
 

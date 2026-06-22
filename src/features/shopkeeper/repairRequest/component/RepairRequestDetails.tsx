@@ -23,13 +23,11 @@ import { useState } from "react";
 import {
   useRepairRequestDetails,
   useUpdateRepairRequestStatusByShopkeeper,
-  useAddRepairRequestNote,
   useUpdateResentRepairQuoteStatus,
 } from "@/features/customer/repairRequest/hooks/useRepairRequest";
 import { Button } from "@/components/ui/button";
 import RepairOfferModal from "@/features/customer/repairHistory/component/RepairOfferModal";
 import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
 import QRCode from "qrcode";
 import {
   AlertDialog,
@@ -44,6 +42,7 @@ import {
 import axios from "axios";
 import { useSession } from "next-auth/react";
 import CheckoutModal from "./CheckoutModal";
+import { useMyProfile } from "../../settings/hooks/useSettings";
 
 const timelineSteps = [
   {
@@ -94,13 +93,9 @@ export default function RepairRequestDetails({ id }: { id: string }) {
   const { data: detailsData, isLoading, refetch } = useRepairRequestDetails(id);
   const updateStatus = useUpdateRepairRequestStatusByShopkeeper();
   const session = useSession();
-  const addNote = useAddRepairRequestNote();
+  const { data: profileData } = useMyProfile();
   const [showOfferModal, setShowOfferModal] = useState(false);
   const updateResentQuote = useUpdateResentRepairQuoteStatus();
-  const [noteMessage, setNoteMessage] = useState("");
-  const [noteCost, setNoteCost] = useState("");
-  const [noteDays, setNoteDays] = useState("");
-  const [noteImages, setNoteImages] = useState<File[]>([]);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isGeneratingFeedback, setIsGeneratingFeedback] = useState(false);
@@ -135,319 +130,84 @@ export default function RepairRequestDetails({ id }: { id: string }) {
     const doc = new jsPDF({
       orientation: "portrait",
       unit: "mm",
-      format: "a4",
+      format: [100, 220],
     });
 
-    const pageHeight = doc.internal.pageSize.getHeight();
+    const shopkeeper = profileData?.data;
+    const shopName = shopkeeper?.shopName || "Repair Shop";
+    const shopOwner = [shopkeeper?.firstName, shopkeeper?.lastName]
+      .filter(Boolean)
+      .join(" ");
+    const receiptDate = new Date();
+    const orderId = request._id.toUpperCase();
+    const price = Number(request.price || 0);
+    const qrLink = `${window.location.origin}/my-invoice/${request._id}`;
+    const qrDataUrl = await QRCode.toDataURL(qrLink, {
+      width: 700,
+      margin: 1,
+      color: { dark: "#000000", light: "#ffffff" },
+    });
 
-    const shopName =
-      typeof request?.shopkeeperId === "object"
-        ? request?.shopkeeperId?.shopName || "Repair Shop"
-        : "Repair Shop";
+    // Receipt background
+    doc.setFillColor(7, 29, 40);
+    doc.rect(0, 0, 100, 220, "F");
 
-    const formatDate = (date: string | number | Date) =>
-      date ? format(new Date(date), "MMM dd, yyyy") : "-";
-
-    const safeText = (text: string | undefined) =>
-      text ? String(text) : "N/A";
-
-    const totalCost =
-      request?.shopkeeperNotes?.reduce(
-        (sum, n) => sum + Number(n.cost || 0),
-        0,
-      ) || 0;
-
-    const invoiceNumber = `IMS-${request?._id?.slice(-6)?.toUpperCase()}`;
-
-    const rows =
-      request?.shopkeeperNotes?.map((n) => [
-        formatDate(n.date),
-        safeText(n.message),
-        `${n.estimatedDays || 0} Days`,
-        `$${Number(n.cost || 0).toFixed(2)}`,
-      ]) || [];
-
-    // ================= BACKGROUND =================
-
-    doc.setFillColor(245, 247, 250);
-    doc.rect(0, 0, 210, 297, "F");
-
-    // ================= HEADER =================
-
-    doc.setFillColor(101, 163, 13);
-    doc.rect(0, 0, 210, 42, "F");
+    // Verified icon
+    doc.setFillColor(13, 62, 69);
+    doc.circle(50, 14, 7, "F");
+    doc.setFillColor(52, 211, 153);
+    doc.circle(50, 14, 3.5, "F");
+    doc.setDrawColor(7, 73, 65);
+    doc.setLineWidth(0.8);
+    doc.line(48.2, 14, 49.5, 15.3);
+    doc.line(49.5, 15.3, 52.2, 12.5);
 
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(24);
+    doc.setFontSize(15);
     doc.setTextColor(255, 255, 255);
+    doc.text("Receipt Verified", 50, 28, { align: "center" });
 
-    doc.text("Repair Invoice", 14, 20);
+    doc.setDrawColor(31, 54, 64);
+    doc.setLineDashPattern([1.2, 1.2], 0);
+    doc.line(10, 35, 90, 35);
 
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
+    const rows: Array<[string, string]> = [
+      ["Order ID", orderId],
+      ["Date", format(receiptDate, "MMM dd, yyyy")],
+      ["Time", format(receiptDate, "hh:mm a")],
+      ["Shop Name", shopName],
+      ["Shop Owner", shopOwner || "N/A"],
+      ["Address", shopkeeper?.shopAddress || "N/A"],
+      ["Email", shopkeeper?.email || "N/A"],
+      ["Phone", shopkeeper?.phone || shopkeeper?.whatsappNumber || "N/A"],
+      ["Price", `£${price.toFixed(2)}`],
+    ];
 
-    doc.text("Verified Device Repair Invoice", 14, 28);
-
-    // ================= VERIFIED BADGE =================
-
-    doc.setFillColor(220, 252, 231);
-    doc.roundedRect(145, 12, 50, 10, 3, 3, "F");
-
-    doc.setFontSize(8);
-    doc.setTextColor(22, 163, 74);
-    doc.setFont("helvetica", "bold");
-
-    doc.text("✓ VERIFIED", 170, 18, {
-      align: "center",
-    });
-
-    // ================= META INFO =================
-
-    doc.setFillColor(255, 255, 255);
-    doc.setDrawColor(230);
-
-    doc.roundedRect(14, 50, 182, 24, 4, 4, "FD");
-
-    doc.setFontSize(8);
-    doc.setTextColor(120);
-
-    doc.text("INVOICE NO", 20, 60);
-    doc.text("DATE", 150, 60);
-
-    doc.setFontSize(11);
-    doc.setTextColor(20);
-    doc.setFont("helvetica", "bold");
-
-    doc.text(invoiceNumber, 20, 67);
-
-    doc.text(formatDate(new Date()), 190, 67, {
-      align: "right",
-    });
-
-    // ================= DEVICE CARD =================
-
-    doc.setFillColor(255, 255, 255);
-    doc.roundedRect(14, 82, 182, 40, 4, 4, "FD");
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
-    doc.setTextColor(17, 24, 39);
-
-    doc.text(safeText(request.deviceModel), 20, 96);
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.setTextColor(107, 114, 128);
-
-    doc.text(`IMEI: ${safeText(request.IMEINumber)}`, 20, 105);
-
-    doc.text(
-      `Status: ${safeText(request.status).replaceAll("_", " ").toUpperCase()}`,
-      20,
-      112,
-    );
-
-    // ================= CUSTOMER + SHOP CARDS =================
-
-    const modernCard = (
-      x: number,
-      y: number,
-      title: string,
-      main: string,
-      sub?: string,
-    ) => {
-      doc.setFillColor(255, 255, 255);
-      doc.roundedRect(x, y, 86, 30, 4, 4, "FD");
-
-      doc.setFontSize(8);
-      doc.setTextColor(120);
-      doc.setFont("helvetica", "bold");
-
-      doc.text(title.toUpperCase(), x + 5, y + 8);
-
-      doc.setFontSize(12);
-      doc.setTextColor(20);
-
-      doc.text(main, x + 5, y + 17);
-
-      if (sub) {
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(8);
-        doc.setTextColor(107, 114, 128);
-
-        doc.text(sub, x + 5, y + 24);
-      }
-    };
-
-    modernCard(
-      14,
-      128,
-      "Customer",
-      safeText(request.firstName),
-      safeText(request.email),
-    );
-
-    modernCard(
-      110,
-      128,
-      "Repair Shop",
-      shopName,
-      `Created: ${formatDate(request.createdAt)}`,
-    );
-
-    // ================= TABLE =================
-
-    autoTable(doc, {
-      startY: 170,
-
-      margin: {
-        left: 14,
-        right: 14,
-      },
-
-      head: [["DATE", "DESCRIPTION", "TIME", "COST"]],
-
-      body:
-        rows.length > 0 ? rows : [["-", "No Repair Notes Added", "-", "$0.00"]],
-
-      theme: "grid",
-
-      styles: {
-        fontSize: 8,
-        cellPadding: 5,
-        textColor: [40, 40, 40],
-        lineColor: [230, 230, 230],
-        lineWidth: 0.2,
-      },
-
-      headStyles: {
-        fillColor: [101, 163, 13],
-        textColor: [255, 255, 255],
-        fontStyle: "bold",
-      },
-
-      alternateRowStyles: {
-        fillColor: [249, 250, 251],
-      },
-
-      columnStyles: {
-        3: {
-          halign: "right",
-        },
-      },
-    });
-
-    const finalY = (doc as any).lastAutoTable?.finalY || 220;
-
-    // ================= TECHNICIAN FEEDBACK =================
-
-    if (request?.technicianFeedback) {
-      doc.setFillColor(255, 255, 255);
-
-      doc.roundedRect(14, finalY + 10, 110, 34, 4, 4, "FD");
-
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(10);
-      doc.setTextColor(17, 24, 39);
-
-      doc.text("TECHNICIAN FEEDBACK", 20, finalY + 20);
-
+    let rowY = 44;
+    rows.forEach(([label, value]) => {
       doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(148, 163, 184);
+      doc.text(label, 10, rowY);
+
       doc.setFontSize(8);
-      doc.setTextColor(107, 114, 128);
+      doc.setTextColor(241, 245, 249);
+      const valueLines = doc.splitTextToSize(value, 55);
+      doc.text(valueLines, 90, rowY, { align: "right" });
+      rowY += Math.max(9, valueLines.length * 4 + 4);
+    });
 
-      const splitFeedback = doc.splitTextToSize(request.technicianFeedback, 96);
+    doc.setLineDashPattern([1.2, 1.2], 0);
+    doc.setDrawColor(31, 54, 64);
+    doc.line(10, rowY - 2, 90, rowY - 2);
 
-      doc.text(splitFeedback, 20, finalY + 28);
-    }
-
-    // ================= TOTAL BOX =================
-
+    // Large verification QR code
+    const qrY = rowY + 4;
     doc.setFillColor(255, 255, 255);
+    doc.roundedRect(7, qrY, 86, 82, 3, 3, "F");
+    doc.addImage(qrDataUrl, "PNG", 12, qrY + 3, 76, 76);
 
-    doc.roundedRect(130, finalY + 10, 66, 34, 4, 4, "FD");
-
-    doc.setFontSize(9);
-    doc.setTextColor(120);
-
-    doc.text("Subtotal", 136, finalY + 20);
-
-    doc.text(`$${totalCost.toFixed(2)}`, 190, finalY + 20, {
-      align: "right",
-    });
-
-    doc.text("Tax", 136, finalY + 27);
-
-    doc.text("$0.00", 190, finalY + 27, {
-      align: "right",
-    });
-
-    doc.setDrawColor(220);
-
-    doc.line(136, finalY + 31, 190, finalY + 31);
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
-    doc.setTextColor(17, 24, 39);
-
-    doc.text("TOTAL", 136, finalY + 39);
-
-    doc.text(`$${totalCost.toFixed(2)}`, 190, finalY + 39, {
-      align: "right",
-    });
-
-    // ================= QR CODE =================
-
-    try {
-      const baseURL = "http://187.77.187.56:4897";
-
-      const qrLink = `${baseURL}/my-invoice/${request._id}`;
-
-      const qrDataUrl = await QRCode.toDataURL(qrLink, {
-        width: 120,
-        margin: 1,
-      });
-
-      const qrY = request?.technicianFeedback ? finalY + 52 : finalY + 12;
-
-      doc.addImage(qrDataUrl, "PNG", 14, qrY, 24, 24);
-
-      doc.setFontSize(7);
-      doc.setTextColor(120);
-
-      doc.text(
-        "Scan to verify invoice",
-        14,
-        request?.technicianFeedback ? finalY + 80 : finalY + 40,
-      );
-    } catch (err) {
-      console.log(err);
-    }
-
-    // ================= FOOTER =================
-
-    doc.setDrawColor(220);
-
-    doc.line(14, pageHeight - 18, 196, pageHeight - 18);
-
-    doc.setFontSize(8);
-    doc.setTextColor(120);
-
-    doc.text(`Thank you for choosing ${shopName}`, 105, pageHeight - 10, {
-      align: "center",
-    });
-
-    doc.text("Computer generated smart verified invoice", 105, pageHeight - 5, {
-      align: "center",
-    });
-
-    // ================= SAVE =================
-
-    doc.save(
-      `Invoice_${request.deviceModel}_${request._id
-        .slice(-5)
-        .toUpperCase()}.pdf`,
-    );
+    doc.save(`Receipt_${request.deviceModel}_${orderId}.pdf`);
   };
 
   const currentStatus = request?.status;
@@ -460,31 +220,6 @@ export default function RepairRequestDetails({ id }: { id: string }) {
 
   const handleStatusUpdate = (status: string) => {
     updateStatus.mutate({ id, status });
-  };
-
-  const handleAddNote = () => {
-    if (!noteMessage.trim()) return;
-    addNote.mutate(
-      {
-        id,
-        payload: {
-          message: noteMessage,
-          cost: noteCost ? parseFloat(noteCost) : undefined,
-          estimatedDays: noteDays ? parseInt(noteDays) : undefined,
-          date: new Date().toISOString(),
-          images: noteImages,
-        },
-      },
-      {
-        onSuccess: () => {
-          setNoteMessage("");
-          setNoteCost("");
-          setNoteDays("");
-          setNoteImages([]);
-          updateStatus.mutate({ id, status: "quote_sent" });
-        },
-      },
-    );
   };
 
   const handleGenerateTechnicianFeedback = async () => {
@@ -503,8 +238,6 @@ export default function RepairRequestDetails({ id }: { id: string }) {
           },
         },
       );
-
-      console.log("Response:", response.data);
 
       if (response.data.success) {
         await refetch();
