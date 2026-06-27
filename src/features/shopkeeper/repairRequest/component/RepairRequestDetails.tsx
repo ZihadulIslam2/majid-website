@@ -8,9 +8,6 @@ import {
   Smartphone,
   User,
   Mail,
-  Clock,
-  DollarSign,
-  Paperclip,
   X,
   ChevronLeft,
   ChevronRight,
@@ -41,7 +38,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import axios from "axios";
 import { useSession } from "next-auth/react";
-import CheckoutModal from "./CheckoutModal";
+import { toast } from "sonner";
 import { useMyProfile } from "../../settings/hooks/useSettings";
 
 const timelineSteps = [
@@ -97,7 +94,7 @@ export default function RepairRequestDetails({ id }: { id: string }) {
   const [showOfferModal, setShowOfferModal] = useState(false);
   const updateResentQuote = useUpdateResentRepairQuoteStatus();
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [isCheckloadSuccess, setIsCheckloadSuccess] = useState(false);
   const [isGeneratingFeedback, setIsGeneratingFeedback] = useState(false);
   const token = session.data?.accessToken;
 
@@ -811,17 +808,22 @@ export default function RepairRequestDetails({ id }: { id: string }) {
                   {isCompletedStatus && (
                     <Button
                       className="flex-1 rounded-full font-bold h-11 cursor-pointer !bg-[#2216cc] text-primary-foreground shadow-lg shadow-primary/20"
-                      onClick={() => setIsCheckoutOpen(true)}
+                      onClick={() => {
+                        setIsCheckloadSuccess(true);
+                        toast.success("Checkload completed successfully");
+                      }}
                       // disabled={updateResentQuote.isPending}
                     >
-                      Checkout
+                      Checkload
                     </Button>
                   )}
 
-                  <CheckoutModal
-                    open={isCheckoutOpen}
-                    onOpenChange={setIsCheckoutOpen}
-                  />
+                  {isCheckloadSuccess && (
+                    <div className="col-span-2 flex items-center gap-2 rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-semibold text-green-700">
+                      <CheckCircle2 className="h-5 w-5 shrink-0" />
+                      <span>Checkload completed successfully.</span>
+                    </div>
+                  )}
 
                   {isConfirmOpen && (
                     <AlertDialog

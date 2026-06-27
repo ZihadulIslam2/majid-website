@@ -16,6 +16,7 @@ import {
   FileText,
   SearchCheckIcon,
   User,
+  ShoppingCart,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -82,6 +83,11 @@ const navItems = [
     icon: <Package size={20} />,
     label: "Inventory",
     href: "/shopkeeper/inventory",
+  },
+  {
+    icon: <ShoppingCart size={20} />,
+    label: "Checkout",
+    href: "/shopkeeper/checkout",
   },
   {
     icon: <User size={20} />,

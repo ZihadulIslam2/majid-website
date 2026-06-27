@@ -175,13 +175,13 @@ export function useCreateInvoice() {
   });
 }
 
-export function useMyInvoiceHistory(id: string) {
+export function useMyInvoiceHistory(id: string, enabled = true) {
   return useQuery<InvoiceHistoryResponse>({
     queryKey: [...INVENTORY_KEYS.myInventory(), id],
 
     queryFn: () => getMyInvoiceHistory(id),
 
-    enabled: !!id,
+    enabled: !!id && enabled,
   });
 }
 
