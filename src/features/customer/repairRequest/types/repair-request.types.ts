@@ -29,6 +29,8 @@ export interface RepairRequestPayload {
   deviceModel: string;
   IMEINumber?: string;
   description: string;
+  staff?: string;
+  status?: string;
   images?: File[];
 }
 
@@ -43,6 +45,7 @@ export type RepairRequestStatus =
   | "rejected"
   | "repair_in_progress"
   | "completed"
+  | "reassigned"
   | "quote-resent";
 
 export interface ShopkeeperNote {

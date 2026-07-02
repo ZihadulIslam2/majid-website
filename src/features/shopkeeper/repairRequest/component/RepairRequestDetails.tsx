@@ -38,8 +38,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import axios from "axios";
 import { useSession } from "next-auth/react";
-import { toast } from "sonner";
 import { useMyProfile } from "../../settings/hooks/useSettings";
+import { RepairRequestFormModal } from "@/features/customer/repairRequest/component/RepairRequestFormModal";
 
 const timelineSteps = [
   {
@@ -53,6 +53,12 @@ const timelineSteps = [
     label: "Order Assigned",
     description: "A technician has been assigned",
     statuses: ["order-assigned"],
+  },
+  {
+    id: "reassigned",
+    label: "Reassigned",
+    description: "The repair has been reassigned for another issue",
+    statuses: ["reassigned"],
   },
   {
     id: "diagnosing",
@@ -92,9 +98,9 @@ export default function RepairRequestDetails({ id }: { id: string }) {
   const session = useSession();
   const { data: profileData } = useMyProfile();
   const [showOfferModal, setShowOfferModal] = useState(false);
+  const [isReassignModalOpen, setIsReassignModalOpen] = useState(false);
   const updateResentQuote = useUpdateResentRepairQuoteStatus();
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-  const [isCheckloadSuccess, setIsCheckloadSuccess] = useState(false);
   const [isGeneratingFeedback, setIsGeneratingFeedback] = useState(false);
   const token = session.data?.accessToken;
 
@@ -765,7 +771,7 @@ export default function RepairRequestDetails({ id }: { id: string }) {
                     variant="outline"
                     className="flex-1 cursor-pointer rounded-full !bg-[#84CC16] hover:text-white font-bold h-11"
                   >
-                    Diagonosing Device
+                    Diagnosing
                   </Button>
 
                   <Button
@@ -808,22 +814,19 @@ export default function RepairRequestDetails({ id }: { id: string }) {
                   {isCompletedStatus && (
                     <Button
                       className="flex-1 rounded-full font-bold h-11 cursor-pointer !bg-[#2216cc] text-primary-foreground shadow-lg shadow-primary/20"
-                      onClick={() => {
-                        setIsCheckloadSuccess(true);
-                        toast.success("Checkload completed successfully");
-                      }}
-                      // disabled={updateResentQuote.isPending}
+                      onClick={() => setIsReassignModalOpen(true)}
                     >
-                      Checkload
+                      Reassigned
                     </Button>
                   )}
 
-                  {isCheckloadSuccess && (
-                    <div className="col-span-2 flex items-center gap-2 rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-semibold text-green-700">
-                      <CheckCircle2 className="h-5 w-5 shrink-0" />
-                      <span>Checkload completed successfully.</span>
-                    </div>
-                  )}
+                  <RepairRequestFormModal
+                    shopkeeper={null}
+                    isOpen={isReassignModalOpen}
+                    onClose={() => setIsReassignModalOpen(false)}
+                    mode="reassign"
+                    repairRequest={request}
+                  />
 
                   {isConfirmOpen && (
                     <AlertDialog
@@ -836,9 +839,10 @@ export default function RepairRequestDetails({ id }: { id: string }) {
                             ⚠️ Attention Required!
                           </AlertDialogTitle>
                           <AlertDialogDescription className="text-base text-gray-700 pt-2 font-medium">
-                            Please make sure to collect the{" "}
-                            <strong>IMEI or Serial number</strong> from the
-                            phone before completing this process.
+                            Are you sure you want to mark this repair request as
+                            completed? This action cannot be undone. Please
+                            ensure that all necessary work has been finished and
+                            the device is ready for collection.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter className="mt-4">

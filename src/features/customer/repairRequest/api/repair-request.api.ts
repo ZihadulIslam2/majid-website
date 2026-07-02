@@ -29,6 +29,14 @@ export const createRepairRequest = async (
   formData.append("deviceModel", payload.deviceModel);
   formData.append("description", payload.description);
 
+  if (payload.staff) {
+    formData.append("staff", payload.staff);
+  }
+
+  if (payload.status) {
+    formData.append("status", payload.status);
+  }
+
   if (payload.IMEINumber) {
     formData.append("IMEINumber", payload.IMEINumber);
   }
