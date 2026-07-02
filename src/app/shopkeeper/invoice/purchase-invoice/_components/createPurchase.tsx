@@ -15,6 +15,8 @@ import {
   DollarSign,
   ShieldAlert,
   X,
+  Calendar,
+  Clock,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
@@ -229,7 +231,13 @@ const pdfStyles = StyleSheet.create({
   },
 });
 
-const PurchaseReceiptPDF = ({ customer, items, shopkeeper, total }: any) => (
+const PurchaseReceiptPDF = ({
+  customer,
+  items,
+  shopkeeper,
+  total,
+  invoiceDate,
+}: any) => (
   <Document>
     <Page size="A4" style={pdfStyles.page}>
       <View style={pdfStyles.headerBar} />
@@ -245,10 +253,24 @@ const PurchaseReceiptPDF = ({ customer, items, shopkeeper, total }: any) => (
           <Text style={pdfStyles.title}>PURCHASE RECEIPT</Text>
           <Text style={pdfStyles.dateText}>
             Date:{" "}
-            {new Date().toLocaleDateString("en-US", {
+            {(invoiceDate
+              ? new Date(invoiceDate)
+              : new Date()
+            ).toLocaleDateString("en-US", {
               year: "numeric",
               month: "long",
               day: "numeric",
+            })}
+          </Text>
+          <Text style={pdfStyles.dateText}>
+            Time:{" "}
+            {(invoiceDate
+              ? new Date(invoiceDate)
+              : new Date()
+            ).toLocaleTimeString("en-US", {
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: true,
             })}
           </Text>
         </View>
@@ -384,6 +406,51 @@ export default function CreatePurchaseReceipt() {
   }>({});
   const [addToInventory, setAddToInventory] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
+  const [invoiceDate, setInvoiceDate] = useState<Date>(new Date());
+
+  const monthNames = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
+
+  const handleQuickOption = (option: "now" | "today" | "yesterday") => {
+    const now = new Date();
+    if (option === "now") {
+      setInvoiceDate(new Date());
+    } else if (option === "today") {
+      now.setHours(0, 0, 0, 0);
+      setInvoiceDate(now);
+    } else if (option === "yesterday") {
+      now.setDate(now.getDate() - 1);
+      now.setHours(0, 0, 0, 0);
+      setInvoiceDate(now);
+    }
+  };
+
+  const updateDatePart = (part: "day" | "month" | "year", value: number) => {
+    const d = new Date(invoiceDate);
+    if (part === "day") d.setDate(value);
+    if (part === "month") d.setMonth(value);
+    if (part === "year") d.setFullYear(value);
+    setInvoiceDate(d);
+  };
+
+  const updateTime = (timeStr: string) => {
+    const [hours, minutes] = timeStr.split(":").map(Number);
+    const d = new Date(invoiceDate);
+    d.setHours(hours, minutes);
+    setInvoiceDate(d);
+  };
 
   useEffect(() => {
     codeReaderRef.current = new BrowserMultiFormatReader();
@@ -755,6 +822,7 @@ export default function CreatePurchaseReceipt() {
         items={items}
         shopkeeper={profileData?.data}
         total={total}
+        invoiceDate={invoiceDate}
       />
     );
     const blob = await pdf(doc).toBlob();
@@ -829,6 +897,138 @@ export default function CreatePurchaseReceipt() {
           <div className="hidden md:flex items-center gap-3 bg-orange-50 text-orange-600 px-5 py-3 rounded-2xl font-bold">
             <Package size={18} />
             {items.length} Items Configured
+          </div>
+        </div>
+
+        {/* Invoice Date & Time Section */}
+        <div className="bg-card border border-border rounded-[28px] p-8 shadow-sm">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center text-blue-600">
+              <Calendar size={20} />
+            </div>
+            <p className="text-xl font-black text-foreground">
+              Invoice Date & Time
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
+            <div className="space-y-2">
+              <label className="text-xs font-black text-muted-foreground uppercase tracking-widest">
+                Date
+              </label>
+              <div className="flex items-center gap-2 rounded-2xl h-12 border border-primary bg-background px-4 font-bold text-sm">
+                <Calendar size={16} className="text-muted-foreground" />
+                <span>
+                  {invoiceDate.toLocaleDateString("en-GB", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric",
+                  })}
+                </span>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-black text-muted-foreground uppercase tracking-widest">
+                Time
+              </label>
+              <div className="flex items-center gap-2 rounded-2xl h-12 border border-primary bg-background px-4 font-bold text-sm">
+                <Clock size={16} className="text-muted-foreground" />
+                <span>
+                  {invoiceDate.toLocaleTimeString("en-US", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hour12: true,
+                  })}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">
+                Quick Options
+              </label>
+              <div className="flex gap-3 mt-2">
+                <button
+                  type="button"
+                  onClick={() => handleQuickOption("now")}
+                  className="px-5 py-2.5 rounded-xl border border-border bg-background text-sm font-bold hover:bg-primary hover:text-white transition-all"
+                >
+                  Now
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleQuickOption("today")}
+                  className="px-5 py-2.5 rounded-xl border border-border bg-background text-sm font-bold hover:bg-primary hover:text-white transition-all"
+                >
+                  Today
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleQuickOption("yesterday")}
+                  className="px-5 py-2.5 rounded-xl border border-border bg-background text-sm font-bold hover:bg-primary hover:text-white transition-all"
+                >
+                  Yesterday
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">
+                Or Select Manually
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-2">
+                <select
+                  value={invoiceDate.getDate()}
+                  onChange={(e) =>
+                    updateDatePart("day", Number(e.target.value))
+                  }
+                  className="rounded-2xl h-12 border border-primary bg-background px-3 text-sm font-bold focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  {Array.from({ length: 31 }, (_, i) => (
+                    <option key={i + 1} value={i + 1}>
+                      {i + 1}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={invoiceDate.getMonth()}
+                  onChange={(e) =>
+                    updateDatePart("month", Number(e.target.value))
+                  }
+                  className="rounded-2xl h-12 border border-primary bg-background px-3 text-sm font-bold focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  {monthNames.map((m, i) => (
+                    <option key={i} value={i}>
+                      {m}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={invoiceDate.getFullYear()}
+                  onChange={(e) =>
+                    updateDatePart("year", Number(e.target.value))
+                  }
+                  className="rounded-2xl h-12 border border-primary bg-background px-3 text-sm font-bold focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  {Array.from({ length: 10 }, (_, i) => {
+                    const year = new Date().getFullYear() - 5 + i;
+                    return (
+                      <option key={year} value={year}>
+                        {year}
+                      </option>
+                    );
+                  })}
+                </select>
+                <input
+                  type="time"
+                  value={`${String(invoiceDate.getHours()).padStart(2, "0")}:${String(invoiceDate.getMinutes()).padStart(2, "0")}`}
+                  onChange={(e) => updateTime(e.target.value)}
+                  className="rounded-2xl h-12 border border-primary bg-background px-3 text-sm font-bold focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                />
+              </div>
+            </div>
           </div>
         </div>
 

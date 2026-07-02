@@ -15,17 +15,28 @@ import {
 import { Check, ChevronDown, Loader2, Search } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useCreateRepairRequest } from "../hooks/useRepairRequest";
-import { Shopkeeper } from "../types/repair-request.types";
+import { RepairRequest, Shopkeeper } from "../types/repair-request.types";
+
+const dummyStaffOptions = [
+  "Alex Morgan",
+  "Jamie Carter",
+  "Taylor Smith",
+  "Riley Johnson",
+];
 
 interface RepairRequestFormModalProps {
   shopkeeper: Shopkeeper | null;
   isOpen: boolean;
   onClose: () => void;
+  mode?: "create" | "reassign";
+  repairRequest?: RepairRequest;
 }
 
 export function RepairRequestFormModal({
   isOpen,
   onClose,
+  mode = "create",
+  repairRequest,
 }: RepairRequestFormModalProps) {
   const [fullName, setFullName] = useState("");
   const [isFullNameEdited, setIsFullNameEdited] = useState(false);
@@ -39,8 +50,10 @@ export function RepairRequestFormModal({
   const [isProblemSelectOpen, setIsProblemSelectOpen] = useState(false);
   const [imeiNumber, setImeiNumber] = useState("");
   const [problemDescription, setProblemDescription] = useState("");
+  const [staff, setStaff] = useState("");
   const { data: profileData } = useMyProfile();
   const user = profileData?.data;
+  const isReassignMode = mode === "reassign";
 
   const { data: repairProblemData } = useRepairProblem(user?._id || "");
   const createRepairRequest = useCreateRepairRequest();
@@ -109,15 +122,23 @@ export function RepairRequestFormModal({
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
+    const nextDescription = problemDescription || problemSearch;
+
     createRepairRequest.mutate(
       {
-        firstName: fullName,
-        email: email,
-        phoneNumber: phone,
-        price: Number(price),
-        deviceModel,
-        IMEINumber: imeiNumber,
-        description: problemDescription,
+        firstName: isReassignMode ? repairRequest?.firstName || "" : fullName,
+        email: isReassignMode ? repairRequest?.email || "" : email,
+        phoneNumber: isReassignMode ? repairRequest?.phoneNumber || "" : phone,
+        price: isReassignMode
+          ? Number(repairRequest?.price || 0)
+          : Number(price),
+        deviceModel: isReassignMode
+          ? repairRequest?.deviceModel || ""
+          : deviceModel,
+        IMEINumber: isReassignMode ? repairRequest?.IMEINumber : imeiNumber,
+        description: nextDescription,
+        staff,
+        status: isReassignMode ? "reassigned" : undefined,
       },
       {
         onSuccess: () => {
@@ -126,6 +147,7 @@ export function RepairRequestFormModal({
           setPrice("");
           setProblemDescription("");
           setProblemSearch("");
+          setStaff("");
           onClose();
         },
       },
@@ -134,112 +156,115 @@ export function RepairRequestFormModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl bg-card border-border sm:rounded-[32px] p-0 overflow-hidden">
+      <DialogContent className="max-w-2xl bg-card border-border sm:rounded-[32px] h-[80vh] overflow-y-scroll p-0 ">
         <div className="bg-primary/5 p-8 border-b border-border">
           <DialogHeader>
             <DialogTitle className="text-2xl font-black text-foreground">
-              Repair Request
+              {isReassignMode ? "Reassigned Repair Request" : "Repair Request"}
             </DialogTitle>
             <DialogDescription className="text-muted-foreground font-medium">
-              Please provide details about your device and the issue you&apos;re
-              facing.
+              {isReassignMode
+                ? "Please provide the new repair issue and staff assignment."
+                : "Please provide details about your device and the issue you're facing."}
             </DialogDescription>
           </DialogHeader>
         </div>
 
         <form onSubmit={handleSubmit} className="p-8 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-foreground uppercase tracking-wider">
-                Full Name
-              </label>
-              <input
-                value={fullName}
-                onChange={(e) => {
-                  setFullName(e.target.value);
-                  setIsFullNameEdited(true);
-                }}
-                required
-                className="w-full h-12 px-4 rounded-xl border border-border bg-background text-foreground font-medium outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
-                placeholder="Your Name"
-              />
-            </div>
+          {!isReassignMode && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-foreground uppercase tracking-wider">
+                  Full Name
+                </label>
+                <input
+                  value={fullName}
+                  onChange={(e) => {
+                    setFullName(e.target.value);
+                    setIsFullNameEdited(true);
+                  }}
+                  required
+                  className="w-full h-12 px-4 rounded-xl border border-border bg-background text-foreground font-medium outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                  placeholder="Your Name"
+                />
+              </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-foreground uppercase tracking-wider">
-                Email Address
-              </label>
-              <input
-                value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  setIsEmailEdited(true);
-                }}
-                required
-                type="email"
-                className="w-full h-12 px-4 rounded-xl border border-border bg-background text-foreground font-medium outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
-                placeholder="your@email.com"
-              />
-            </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-foreground uppercase tracking-wider">
+                  Email Address
+                </label>
+                <input
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setIsEmailEdited(true);
+                  }}
+                  required
+                  type="email"
+                  className="w-full h-12 px-4 rounded-xl border border-border bg-background text-foreground font-medium outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                  placeholder="your@email.com"
+                />
+              </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-foreground uppercase tracking-wider">
-                Phone Number
-              </label>
-              <input
-                value={phone}
-                onChange={(e) => {
-                  setPhone(e.target.value);
-                  setIsPhoneEdited(true);
-                }}
-                required
-                type="tel"
-                className="w-full h-12 px-4 rounded-xl border border-border bg-background text-foreground font-medium outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
-                placeholder="your phone number"
-              />
-            </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-foreground uppercase tracking-wider">
+                  Phone Number
+                </label>
+                <input
+                  value={phone}
+                  onChange={(e) => {
+                    setPhone(e.target.value);
+                    setIsPhoneEdited(true);
+                  }}
+                  required
+                  type="tel"
+                  className="w-full h-12 px-4 rounded-xl border border-border bg-background text-foreground font-medium outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                  placeholder="your phone number"
+                />
+              </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-foreground uppercase tracking-wider">
-                Device Model
-              </label>
-              <input
-                value={deviceModel}
-                onChange={(e) => setDeviceModel(e.target.value)}
-                required
-                className="w-full h-12 px-4 rounded-xl border border-border bg-background text-foreground font-medium outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
-                placeholder="e.g. iPhone 15 Pro"
-              />
-            </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-foreground uppercase tracking-wider">
+                  Device Model
+                </label>
+                <input
+                  value={deviceModel}
+                  onChange={(e) => setDeviceModel(e.target.value)}
+                  required
+                  className="w-full h-12 px-4 rounded-xl border border-border bg-background text-foreground font-medium outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                  placeholder="e.g. iPhone 15 Pro"
+                />
+              </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-foreground uppercase tracking-wider">
-                Price
-              </label>
-              <input
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                required
-                type="number"
-                min="0"
-                step="0.01"
-                className="w-full h-12 px-4 rounded-xl border border-border bg-background text-foreground font-medium outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
-                placeholder="e.g. 150.00"
-              />
-            </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-foreground uppercase tracking-wider">
+                  Price
+                </label>
+                <input
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  required
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className="w-full h-12 px-4 rounded-xl border border-border bg-background text-foreground font-medium outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                  placeholder="e.g. 150.00"
+                />
+              </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-foreground uppercase tracking-wider">
-                IMEI Number (Optional)
-              </label>
-              <input
-                value={imeiNumber}
-                onChange={(e) => setImeiNumber(e.target.value)}
-                className="w-full h-12 px-4 rounded-xl border border-border bg-background text-foreground font-medium outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
-                placeholder="Enter IMEI"
-              />
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-foreground uppercase tracking-wider">
+                  IMEI Number (Optional)
+                </label>
+                <input
+                  value={imeiNumber}
+                  onChange={(e) => setImeiNumber(e.target.value)}
+                  className="w-full h-12 px-4 rounded-xl border border-border bg-background text-foreground font-medium outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                  placeholder="Enter IMEI"
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="space-y-2">
             <label className="text-sm font-bold text-foreground uppercase tracking-wider">
@@ -301,6 +326,25 @@ export function RepairRequestFormModal({
 
           <div className="space-y-2">
             <label className="text-sm font-bold text-foreground uppercase tracking-wider">
+              Technician
+            </label>
+            <select
+              value={staff}
+              onChange={(e) => setStaff(e.target.value)}
+              required
+              className="w-full h-12 px-4 rounded-xl border border-border bg-background text-foreground font-medium outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+            >
+              <option value="">Select staff</option>
+              {dummyStaffOptions.map((staffName) => (
+                <option key={staffName} value={staffName}>
+                  {staffName}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-foreground uppercase tracking-wider">
               Problem Description
             </label>
             <textarea
@@ -329,6 +373,8 @@ export function RepairRequestFormModal({
             >
               {createRepairRequest.isPending ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
+              ) : isReassignMode ? (
+                "Reassigned"
               ) : (
                 "Submit Request"
               )}
