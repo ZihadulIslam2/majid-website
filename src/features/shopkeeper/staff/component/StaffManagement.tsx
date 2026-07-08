@@ -3,6 +3,7 @@
 import { FormEvent, useMemo, useState } from "react";
 import Image from "next/image";
 import { Loader2, Mail, Phone, Plus, UsersRound } from "lucide-react";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -52,8 +53,10 @@ function getInitials(name: string) {
 export default function StaffManagement() {
   const [isOpen, setIsOpen] = useState(false);
   const [form, setForm] = useState(initialForm);
+  const { data: session } = useSession();
   const { data: staff = [], isLoading, isError } = useStaffList();
   const createStaff = useCreateStaff();
+  const shopkeeperId = (session?.user as { id?: string })?.id;
 
   const activeCount = useMemo(
     () => staff.filter((member) => member.isVerified).length,
@@ -69,6 +72,7 @@ export default function StaffManagement() {
       email: form.email.trim(),
       phone: form.phone.trim(),
       password: form.password,
+      shopkeeperId,
     });
 
     setForm(initialForm);
