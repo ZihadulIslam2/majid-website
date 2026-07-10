@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
@@ -118,18 +118,19 @@ type CustomerDiscountPayload = {
   customerId: string;
 };
 
-type CustomerDiscountMutationInput = {
-  id?: string;
-  customerId: string;
-  payload: Partial<CustomerDiscountPayload>;
-};
-
 type EmailForm = {
   subject: string;
   description: string;
 };
 
+type CustomerEmailPayload = {
+  customerIds: string[];
+  subject: string;
+  description: string;
+};
+
 const CUSTOMER_DISCOUNT_BASE = "/customer-discounts";
+const CUSTOMER_EMAIL_BASE = "/customer/send-email";
 
 const getCustomerDiscountsByCustomerId = async (
   customerId: string,
@@ -149,26 +150,8 @@ const createCustomerDiscountRequest = async (
   return response.data;
 };
 
-const updateCustomerDiscountRequest = async ({
-  id,
-  payload,
-}: CustomerDiscountMutationInput) => {
-  const response = await api.put(
-    `${CUSTOMER_DISCOUNT_BASE}/update/${id}`,
-    payload,
-  );
-
-  return response.data;
-};
-
 const deleteCustomerDiscountRequest = async (id: string) => {
   const response = await api.delete(`${CUSTOMER_DISCOUNT_BASE}/delete/${id}`);
-
-  return response.data;
-};
-
-const resetCustomerDiscountRequest = async (id: string) => {
-  const response = await api.patch(`${CUSTOMER_DISCOUNT_BASE}/reset/${id}`);
 
   return response.data;
 };
@@ -196,36 +179,10 @@ const createDefaultEmailForm = (): EmailForm => ({
   description: "",
 });
 
-type DiscountAction =
-  | { type: "load"; discounts: CustomerDiscount[] }
-  | { type: "add"; discount: CustomerDiscount }
-  | { type: "track"; discountId: string }
-  | { type: "delete"; discountId: string };
+const sendCustomerEmailRequest = async (payload: CustomerEmailPayload) => {
+  const response = await api.post(CUSTOMER_EMAIL_BASE, payload);
 
-const discountReducer = (
-  discounts: CustomerDiscount[],
-  action: DiscountAction,
-) => {
-  switch (action.type) {
-    case "load":
-      return action.discounts;
-    case "add":
-      return [action.discount, ...discounts];
-    case "track":
-      return discounts.map((discount) => {
-        if (discount.id !== action.discountId) return discount;
-        if (discount.usedCount >= discount.usageLimit) return discount;
-
-        return {
-          ...discount,
-          usedCount: discount.usedCount + 1,
-        };
-      });
-    case "delete":
-      return discounts.filter((discount) => discount.id !== action.discountId);
-    default:
-      return discounts;
-  }
+  return response.data;
 };
 
 const createDefaultDiscountForm = (): DiscountForm => {
@@ -283,6 +240,7 @@ export default function Customer() {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
     null,
   );
+  const [selectedCustomerIds, setSelectedCustomerIds] = useState<string[]>([]);
   const [discountCustomer, setDiscountCustomer] = useState<Customer | null>(
     null,
   );
@@ -290,7 +248,7 @@ export default function Customer() {
     createDefaultDiscountForm(),
   );
   const [discountView, setDiscountView] = useState<"add" | "list">("add");
-  const [emailCustomer, setEmailCustomer] = useState<Customer | null>(null);
+  const [emailRecipients, setEmailRecipients] = useState<Customer[]>([]);
   const [emailForm, setEmailForm] = useState<EmailForm>(() =>
     createDefaultEmailForm(),
   );
@@ -312,15 +270,6 @@ export default function Customer() {
     },
   });
 
-  const updateCustomerDiscountMutation = useMutation({
-    mutationFn: updateCustomerDiscountRequest,
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: ["customer-discounts", discountCustomer?._id || ""],
-      });
-    },
-  });
-
   const deleteCustomerDiscountMutation = useMutation({
     mutationFn: deleteCustomerDiscountRequest,
     onSuccess: async () => {
@@ -330,12 +279,17 @@ export default function Customer() {
     },
   });
 
-  const resetCustomerDiscountMutation = useMutation({
-    mutationFn: resetCustomerDiscountRequest,
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: ["customer-discounts", discountCustomer?._id || ""],
-      });
+  const sendCustomerEmailMutation = useMutation({
+    mutationFn: sendCustomerEmailRequest,
+    onSuccess: (data) => {
+      toast.success(data?.message || "Email sent successfully");
+      setEmailRecipients([]);
+      setEmailForm(createDefaultEmailForm());
+      setSelectedCustomerIds([]);
+    },
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message || "Failed to send email");
     },
   });
 
@@ -401,6 +355,25 @@ export default function Customer() {
     });
   }, [customerRows, searchQuery]);
 
+  const selectedCustomers = useMemo(
+    () =>
+      customers.filter((customer) =>
+        selectedCustomerIds.includes(customer._id),
+      ),
+    [customers, selectedCustomerIds],
+  );
+
+  const selectedCustomersWithEmail = useMemo(
+    () => selectedCustomers.filter((customer) => Boolean(customer.email)),
+    [selectedCustomers],
+  );
+
+  const allVisibleSelected =
+    filteredRows.length > 0 &&
+    filteredRows.every(({ customer }) =>
+      selectedCustomerIds.includes(customer._id),
+    );
+
   const selectedCustomerInvoices = useMemo(() => {
     if (!selectedCustomer) return [];
     return getCustomerInvoices(selectedCustomer);
@@ -465,14 +438,45 @@ export default function Customer() {
   };
 
   const handleOpenEmail = (customer: Customer) => {
-    setEmailCustomer(customer);
+    setEmailRecipients([customer]);
+    setEmailForm(createDefaultEmailForm());
+  };
+
+  const handleOpenBulkEmail = () => {
+    if (!selectedCustomerIds.length) {
+      toast.error("Select at least one customer first");
+      return;
+    }
+
+    setEmailRecipients(selectedCustomers);
     setEmailForm(createDefaultEmailForm());
   };
 
   const handleSubmitEmail = () => {
-    if (!emailCustomer) return;
+    if (!emailRecipients.length) return;
 
-    toast.success("Email UI is ready. API integration can be added next.");
+    const customerIds = emailRecipients.map((customer) => customer._id);
+
+    if (!customerIds.length) {
+      toast.error("No valid recipients were selected");
+      return;
+    }
+
+    if (!emailForm.subject.trim()) {
+      toast.error("Subject is required");
+      return;
+    }
+
+    if (!emailForm.description.trim()) {
+      toast.error("Description is required");
+      return;
+    }
+
+    sendCustomerEmailMutation.mutate({
+      customerIds,
+      subject: emailForm.subject.trim(),
+      description: emailForm.description.trim(),
+    });
   };
 
   const handleAddDiscount = () => {
@@ -532,30 +536,6 @@ export default function Customer() {
     });
   };
 
-  const handleTrackDiscountUsage = (discountId: string) => {
-    updateCustomerDiscountMutation.mutate(
-      {
-        id: discountId,
-        customerId: discountCustomer?._id || "",
-        payload: {
-          discountName: "",
-          percentage: 0,
-          customerId: discountCustomer?._id || "",
-        },
-      },
-      {
-        onError: (error: unknown) => {
-          const err = error as {
-            response?: { data?: { message?: string } };
-          };
-          toast.error(
-            err.response?.data?.message || "Failed to track discount",
-          );
-        },
-      },
-    );
-  };
-
   const handleDeleteDiscount = (discountId: string) => {
     deleteCustomerDiscountMutation.mutate(discountId, {
       onSuccess: () => {
@@ -564,18 +544,6 @@ export default function Customer() {
       onError: (error: unknown) => {
         const err = error as { response?: { data?: { message?: string } } };
         toast.error(err.response?.data?.message || "Failed to delete discount");
-      },
-    });
-  };
-
-  const handleResetDiscount = (discountId: string) => {
-    resetCustomerDiscountMutation.mutate(discountId, {
-      onSuccess: () => {
-        toast.success("Discount reset successfully");
-      },
-      onError: (error: unknown) => {
-        const err = error as { response?: { data?: { message?: string } } };
-        toast.error(err.response?.data?.message || "Failed to reset discount");
       },
     });
   };
@@ -597,6 +565,26 @@ export default function Customer() {
       console.error("Download failed:", error);
       toast.error("Failed to download invoice");
     }
+  };
+
+  const toggleCustomerSelection = (customerId: string) => {
+    setSelectedCustomerIds((current) =>
+      current.includes(customerId)
+        ? current.filter((id) => id !== customerId)
+        : [...current, customerId],
+    );
+  };
+
+  const toggleVisibleCustomers = (checked: boolean) => {
+    const visibleCustomerIds = filteredRows.map(({ customer }) => customer._id);
+
+    setSelectedCustomerIds((current) => {
+      if (checked) {
+        return Array.from(new Set([...current, ...visibleCustomerIds]));
+      }
+
+      return current.filter((id) => !visibleCustomerIds.includes(id));
+    });
   };
 
   if (isLoading) {
@@ -735,6 +723,16 @@ export default function Customer() {
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          {selectedCustomerIds.length > 0 && (
+            <Button
+              type="button"
+              onClick={handleOpenBulkEmail}
+              className="h-10 rounded-lg bg-[#84CC16] px-4 text-xs font-black text-white hover:bg-[#76b813]"
+            >
+              <Send className="h-4 w-4" />
+              Send Email ({selectedCustomerIds.length})
+            </Button>
+          )}
           <div className="relative w-full sm:w-96">
             <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
@@ -778,6 +776,10 @@ export default function Customer() {
                     type="checkbox"
                     className="h-4 w-4 rounded border-slate-300"
                     aria-label="Select all customers"
+                    checked={allVisibleSelected}
+                    onChange={(event) =>
+                      toggleVisibleCustomers(event.target.checked)
+                    }
                   />
                 </TableHead>
                 <TableHead className="px-4 py-3 text-[11px] font-black uppercase tracking-wider text-slate-500">
@@ -817,6 +819,8 @@ export default function Customer() {
                         type="checkbox"
                         className="h-4 w-4 rounded border-slate-300"
                         aria-label={`Select ${customer.firstName} ${customer.lastName}`}
+                        checked={selectedCustomerIds.includes(customer._id)}
+                        onChange={() => toggleCustomerSelection(customer._id)}
                       />
                     </TableCell>
                     <TableCell className="px-4 py-3">
@@ -972,10 +976,10 @@ export default function Customer() {
       />
 
       <Dialog
-        open={!!emailCustomer}
+        open={emailRecipients.length > 0}
         onOpenChange={(open) => {
           if (!open) {
-            setEmailCustomer(null);
+            setEmailRecipients([]);
             setEmailForm(createDefaultEmailForm());
           }
         }}
@@ -990,15 +994,28 @@ export default function Customer() {
             </DialogTitle>
           </DialogHeader>
 
-          {emailCustomer && (
+          {emailRecipients.length > 0 && (
             <div className="space-y-5 p-6">
               <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/60">
                 <p className="text-sm font-black text-slate-950 dark:text-white">
-                  {emailCustomer.firstName} {emailCustomer.lastName}
+                  Sending to {emailRecipients.length} customer
+                  {emailRecipients.length !== 1 ? "s" : ""}
                 </p>
-                <p className="mt-1 text-xs font-semibold text-slate-500">
-                  {emailCustomer.phone || "No phone"}
-                </p>
+                <div className="mt-3 max-h-32 space-y-2 overflow-y-auto">
+                  {emailRecipients.map((recipient) => (
+                    <div
+                      key={recipient._id}
+                      className="rounded-xl bg-white px-3 py-2 dark:bg-slate-900/60"
+                    >
+                      <p className="text-xs font-black text-slate-900 dark:text-white">
+                        {recipient.firstName} {recipient.lastName}
+                      </p>
+                      <p className="text-[11px] font-semibold text-slate-500">
+                        {recipient.email || "No email"}
+                      </p>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               <label className="block">
@@ -1007,7 +1024,10 @@ export default function Customer() {
                 </span>
                 <input
                   type="email"
-                  value={emailCustomer.email || ""}
+                  value={selectedCustomersWithEmail
+                    .map((customer) => customer.email)
+                    .filter(Boolean)
+                    .join(", ")}
                   readOnly
                   placeholder="No email available"
                   className="mt-2 h-11 w-full rounded-lg border border-slate-100 bg-slate-50 px-3 text-sm font-bold text-slate-600 outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
@@ -1056,7 +1076,7 @@ export default function Customer() {
                   variant="outline"
                   className="rounded-lg text-xs font-black"
                   onClick={() => {
-                    setEmailCustomer(null);
+                    setEmailRecipients([]);
                     setEmailForm(createDefaultEmailForm());
                   }}
                 >
@@ -1065,10 +1085,18 @@ export default function Customer() {
                 <Button
                   type="button"
                   onClick={handleSubmitEmail}
-                  disabled={!emailCustomer.email}
+                  disabled={
+                    !emailRecipients.some((customer) =>
+                      Boolean(customer.email),
+                    ) || sendCustomerEmailMutation.isPending
+                  }
                   className="rounded-lg bg-[#84CC16] text-xs font-black text-white hover:bg-[#76b813] disabled:opacity-60"
                 >
-                  <Send className="h-4 w-4" />
+                  {sendCustomerEmailMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
                   Submit
                 </Button>
               </div>
