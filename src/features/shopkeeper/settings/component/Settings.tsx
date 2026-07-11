@@ -39,6 +39,7 @@ import {
 } from "../types";
 import { detectCurrency } from "../api/settings.api";
 import { CURRENCY_LIST, getCurrencySymbol } from "@/lib/currency";
+import { shouldAutoDetectCurrency } from "../utils/currencyDetection";
 
 function generateShopkeeperId(id: string, name: string): string {
   const prefix = "IMS";
@@ -370,17 +371,13 @@ export default function Settings() {
         whatsappNumber: user.whatsappNumber || "",
       });
 
-      if (user.currency) {
-        setCurrency(user.currency);
-      } else {
-        // Auto-detect currency from IP if not set
+      if (shouldAutoDetectCurrency(user.currency)) {
         (async () => {
           try {
             setIsDetectingCurrency(true);
             const res = await detectCurrency();
             if (res?.data?.currency) {
               setCurrency(res.data.currency);
-              // Save detected currency to profile
               const formData = new FormData();
               formData.append("currency", res.data.currency);
               await updateProfileMutation.mutateAsync(formData);
@@ -391,6 +388,8 @@ export default function Settings() {
             setIsDetectingCurrency(false);
           }
         })();
+      } else {
+        setCurrency(user.currency ?? "USD");
       }
     }
   }, [profileData, profileForm]);
