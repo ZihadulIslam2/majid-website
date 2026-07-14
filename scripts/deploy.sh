@@ -7,7 +7,7 @@ APP_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$APP_ROOT"
 
 echo "[majid-website] Installing dependencies"
-npm ci
+npm ci --legacy-peer-deps
 
 echo "[majid-website] Building app"
 npm run build
