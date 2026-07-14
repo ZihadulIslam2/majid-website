@@ -169,7 +169,7 @@ export default function Sidebar({
       <aside
         className={`sticky top-0 flex h-dvh max-w-full flex-col border-r border-border bg-sidebar font-poppins text-sidebar-foreground shadow-[4px_0_24px_rgba(0,0,0,0.02)] transition-[width] duration-300 ${
           collapsed ? "w-[88px]" : "w-[min(300px,100vw)]"
-        }`}
+        } relative`}
       >
         {/* Logo Section */}
         <div className="flex items-center justify-center gap-2 p-4 pb-6">
@@ -184,21 +184,6 @@ export default function Sidebar({
                 />
               </div>
             </Link>
-          )}
-          {onToggleCollapse && (
-            <button
-              type="button"
-              onClick={onToggleCollapse}
-              className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-border bg-card text-muted-foreground transition hover:bg-[#84CC16]/10 hover:text-[#84CC16] lg:flex"
-              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-              title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            >
-              {collapsed ? (
-                <PanelLeftOpen size={20} />
-              ) : (
-                <PanelLeftClose size={20} />
-              )}
-            </button>
           )}
         </div>
 
@@ -470,6 +455,22 @@ export default function Sidebar({
             background: #cbd5e1;
           }
         `}</style>
+
+        {onToggleCollapse && (
+          <button
+            type="button"
+            onClick={onToggleCollapse}
+            className="absolute top-1/2 right-0 z-10 hidden -translate-y-1/2 translate-x-1/2 items-center justify-center text-muted-foreground transition hover:text-[#84CC16] lg:flex"
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {collapsed ? (
+              <PanelLeftOpen size={14} />
+            ) : (
+              <PanelLeftClose size={14} />
+            )}
+          </button>
+        )}
       </aside>
 
       <AnimatePresence>
