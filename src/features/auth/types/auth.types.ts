@@ -44,6 +44,7 @@ export interface RegisterPayload {
   email: string;
   password: string;
   role: string;
+  shopkeeperId?: string;
   shopName?: string;
   shopAddress?: string;
   whatsappNumber?: string;
