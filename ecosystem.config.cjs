@@ -1,7 +1,7 @@
 module.exports = {
   apps: [
     {
-      name: "majid-website",
+      name: "imoscan-frontend",
       cwd: __dirname,
       script: "node_modules/next/dist/bin/next",
       args: "start -p 3000",
